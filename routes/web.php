@@ -36,10 +36,17 @@ Route::group(['prefix' => 'api', 'controller' => StoreController::class], functi
 Route::group(['prefix' => 'api', 'controller' => UserController::class], function () {
     Route::get('/users', 'index');
     Route::post('/users', 'store');
+    Route::post('/user-register', 'userRegister');
+    Route::post('/login', 'login');
 });
 
 /** Product Route */
-Route::group(['prefix' => 'api', 'controller' => ProductController::class], function () {
+Route::group(
+    [
+        'middleware' => 'jauth',
+        'prefix' => 'api',
+        'controller' => ProductController::class
+    ], function () {
     Route::post('/products', 'store');
     Route::get('/products', 'index');
     Route::get('/products/{slug}', 'show');

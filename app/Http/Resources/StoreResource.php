@@ -27,7 +27,9 @@ class StoreResource extends JsonResource
             'district' => $this->district->name,
             'city' => $this->city->name,
             'city_ro_code' => $this->city->ro_api_code,
-            'province' => $this->province->name
+            'province' => $this->province->name,
+            'store_image_path' => 'storage/'.$this->image_path,
+            'store_image_mime' => $this->image_mime
         ];
 
         if ($this->products && count($this->products) >= 0) {

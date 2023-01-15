@@ -24,6 +24,7 @@ class StoreController extends Controller
             'email' => 'nullable|email:dns',
             'phone' => ['nullable', 'regex:/^(0[1-9]{1}|(\+[1-9]{1}))[0-9]{3,13}$/', 'min:8'],
             'whatsapp' => ['nullable', 'regex:/^(0[1-9]{1}|(\+[1-9]{1}))[0-9]{3,13}$/', 'min:8'],
+            'image' => 'image|file|max:2048',
             'full_address' => 'required',
             'district_id' => 'required',
             'city_id' => 'required',
@@ -45,6 +46,8 @@ class StoreController extends Controller
             'phone.min' => 'Mobilephone Number must ber at least 8 character (including country prefix)',
             'whatsapp.regex' => 'Whatsapp Number is invalid. Allowed characted : + and 0-9; without space, "-", or "\"; Starting with "00" is not allowed use +(prefix) instead',
             'whatsapp.min' => 'Whatsapp Number must be at least 8 character (including country prefix)',
+            'image.image' => 'File must be an image (jpg, jpeg, png, bmp, gif, svg, or webp)',
+            'image.max' => 'File size can not be greater than 2MB (2048 KB)',
             'full_address.required' => 'Adress is required',
             'district_id.required' => 'District ID is required',
             'city_id.required' => 'City ID is required',
@@ -107,8 +110,8 @@ class StoreController extends Controller
     public function store(Request $request)
     {
         $this->rules['user_id'] = 'required|unique:App\Models\Store';
-        $this->rules['user_id.required'] = 'User ID is required';
-        $this->rules['user_id.unique'] = 'User already has store registered';
+        $this->messages['user_id.required'] = 'User ID is required';
+        $this->messages['user_id.unique'] = 'User already has store registered';
 
         $validator = Validator::make($request->all(), $this->rules, $this->messages);
 
@@ -120,13 +123,11 @@ class StoreController extends Controller
                 'errors' => $validator->errors()
             ], 400);
         } else {
-            $validated = $validator->validated();
-
-            $validateUser = User::find($validated['user_id']);
-            $validateProvince = Province::find($validated['province_id']);
-            $validateCity = City::find($validated['city_id']);
-            $validateDistrict = District::find($validated['district_id']);
-            $validateCategory = StoreCategory::find($validated['category_id']);
+            $validateUser = User::find($validator->validated()['user_id']);
+            $validateProvince = Province::find($validator->validated()['province_id']);
+            $validateCity = City::find($validator->validated()['city_id']);
+            $validateDistrict = District::find($validator->validated()['district_id']);
+            $validateCategory = StoreCategory::find($validator->validated()['category_id']);
 
             if ($validateUser === null || $validateProvince === null || $validateCity === null || $validateDistrict === null || $validateCategory === null) {
                 $validateUser === null ? $errors['user_id'][] = 'User ID not found' : '';
@@ -142,6 +143,22 @@ class StoreController extends Controller
                     'errors' => $errors
                 ], 400);
             } else {
+                $validated = [
+                    'store_name' => $validator->validated()['store_name'],
+                    'domain' => $validator->validated()['domain'],
+                    'email' => $validator->validated()['email'],
+                    'phone' => $validator->validated()['phone'],
+                    'whatsapp' => $validator->validated()['whatsapp'],
+                    'full_address' => $validator->validated()['full_address'],
+                    'district_id' => $validator->validated()['district_id'],
+                    'city_id' => $validator->validated()['city_id'],
+                    'province_id' => $validator->validated()['province_id'],
+                    'category_id' => $validator->validated()['category_id'],
+                    'user_id' => $validator->validated()['user_id'],
+                    'image_path' => $request->file('image')->store('store-images'),
+                    'image_mime' => $request->file('image')->getMimeType()
+                ];
+
                 $inputStore = Store::insert($validated);
 
                 if ($inputStore) {
@@ -167,7 +184,7 @@ class StoreController extends Controller
      * @param  \App\Models\Store  $store
      * @return \Illuminate\Http\Response
      */
-    public function show(Request $request, $slug)
+    public function show($slug)
     {
         if ($slug) {
             $store = $this->store->findStore($slug);

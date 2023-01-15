@@ -14,15 +14,31 @@ class UserResource extends JsonResource
      */
     public function toArray($request)
     {
-        // return parent::toArray($request);
-        return [
+        $toArr = [
             'name' => $this->name,
-            'email' => $this->email,
-            'email_prefix' => $this->email_prefix,
-            'phone' => $this->phone,
-            'phone_prefix' => $this->phone_prefix,
             'image' => $this->image_path,
             'role' => $this->role
         ];
+
+        $loggedInUser = auth()->guard('api')->user();
+
+        if ($loggedInUser->role == 'su') {
+            $toArr['email'] = $this->email;
+            $toArr['email_prefix'] = $this->email_prefix;
+            $toArr['phone'] = $this->phone;
+            $toArr['phone_prefix'] = $this->phone_prefix;
+        } else if ($loggedInUser->role == 'admin') {
+            $toArr['email'] = $this->email_prefix;
+            $toArr['phone'] = $this->phone_prefix;
+        } else {
+            if ($loggedInUser->id === $this->id) {
+                $toArr['email'] = $this->email;
+                $toArr['email_prefix'] = $this->email_prefix;
+                $toArr['phone'] = $this->phone;
+                $toArr['phone_prefix'] = $this->phone_prefix;
+            }
+        }
+
+        return $toArr;
     }
 }

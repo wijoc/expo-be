@@ -15,7 +15,7 @@ class EcommerceSeeder extends Seeder
      */
     public function run()
     {
-        Ecommerce::insert([
+        Ecommerce::create(
             [
                 'name' => 'Blibli'
             ],
@@ -34,9 +34,9 @@ class EcommerceSeeder extends Seeder
             [
                 'name' => 'Tokopedia'
             ]
-        ]);
+        );
 
-        DeliveryService::insert([
+        DeliveryService::insert(
             [
                 'name' => 'JNE',
                 'ro_api_param' => 'jne'
@@ -49,6 +49,6 @@ class EcommerceSeeder extends Seeder
                 'name' => 'TIKI',
                 'ro_api_param' => 'tiki'
             ]
-        ]);
+        );
     }
 }

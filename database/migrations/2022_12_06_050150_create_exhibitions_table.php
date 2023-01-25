@@ -18,13 +18,19 @@ class CreateExhibitionsTable extends Migration
             $table->string('name', 50);
             $table->integer('is_sub_category')->nullable()->default(0);
             $table->integer('parent_id')->nullable()->default(0);
-            $table->timestamps();
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
         });
 
         Schema::create('store_category', function (Blueprint $table) {
             $table->id();
             $table->string('name', 50);
-            $table->timestamps();
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
         });
 
         Schema::create('store', function (Blueprint $table) {
@@ -38,7 +44,10 @@ class CreateExhibitionsTable extends Migration
             $table->string('image_mime', 225)->nullable();
             $table->text('description')->nullable();
             $table->longText('full_address');
-            $table->timestamps();
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('user_id')->constrained('tb_user')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('district_id')->constrained('ref_district')->onUpdate('cascade')->onDelete('cascade');
@@ -51,7 +60,10 @@ class CreateExhibitionsTable extends Migration
             $table->id();
             $table->string('ecommerce_name', 50);
             $table->string('ecommerce_link', 225);
-            $table->timestamps();
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('store_id')->constrained('store')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('ecommerce_id')->constrained('ref_ecommerce')->onUpdate('cascade')->onDelete('cascade');
@@ -59,7 +71,10 @@ class CreateExhibitionsTable extends Migration
 
         Schema::create('store_delivery', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('store_id')->constrained('store')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('delivery_service_id')->constrained('ref_delivery_service')->onUpdate('cascade')->onDelete('cascade');
@@ -75,7 +90,10 @@ class CreateExhibitionsTable extends Migration
             $table->decimal('disc_price', $precision = 13, $scale = 2)->nullable();
             $table->integer('weight_g');
             $table->integer('min_purchase');
-            $table->timestamps();
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('store_id')->constrained('store')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('category_id')->constrained('product_category')->onUpdate('cascade')->onDelete('cascade');
@@ -85,7 +103,10 @@ class CreateExhibitionsTable extends Migration
             $table->id();
             $table->string('mime', 225);
             $table->string('path', 225);
-            $table->timestamps();
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('product_id')->constrained('product')->onUpdate('cascade')->onDelete('cascade');
         });

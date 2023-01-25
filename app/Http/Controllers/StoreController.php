@@ -3,13 +3,17 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 use App\Models\Store;
 use App\Models\Product;
+use App\Http\Resources\ProductResource;
 use App\Models\User;
 use App\Models\Province;
 use App\Models\City;
 use App\Models\District;
+use App\Models\KeywordLog;
+use App\Models\ShowStoreLog;
 use App\Models\StoreCategory;
 use App\Http\Resources\StoreResource;
 
@@ -17,7 +21,11 @@ class StoreController extends Controller
 {
     public function __construct()
     {
-        $this->stores = new Store();
+        $this->storeModel = new Store();
+        $this->productModel = new Product();
+        $this->storeLogModel = new ShowStoreLog();
+        $this->keywordLogModel = new KeywordLog();
+
         $this->rules = [
             'store_name' => 'required|min:1|max:60|unique:App\Models\Store',
             'domain' => 'required|min:1|max:25|regex:/^((?!-)[\d\w\-]{1,25}(?<!-))+$/|unique:App\Models\Store',
@@ -63,39 +71,165 @@ class StoreController extends Controller
      */
     public function index(Request $request)
     {
-        $storesData = $this->stores->getStores($request);
+        $filters['client_ip'] = $_SERVER['REMOTE_ADDR'] ?? $request->ip();
+        $filters['user_id'] = auth()->guard('api')->user()->id ?? null;
+        $filters['search'] = $request->search ?? null;
 
-        if ($storesData) {
-            $data = [];
-            foreach ($storesData as $key => $value) {
-                if (!array_key_exists($value['store_id'], $data)) {
-                    $data[$value['store_id']] = $value;
-                    $data[$value['store_id']]['products'] = [];
+        // Set Sorting
+        switch ($request->sort) {
+            case "relevant":
+                $filters['sort'] = false;
+                break;
+            // case "featured":
+            // case "popularity":
+            //     $filters['order'] = $request->order ?? 'ASC';
+            //     $filters['sort'] = 'popularity_poin';
+            //     break;
+            // case "price":
+            //     $filters['sort'] = 'net_price';
+            //     break;
+            case "name":
+                $filters['order'] = $request->order ?? 'ASC';
+                $filters['sort'] = 'store_name';
+                break;
+            case "newest":
+            case "latest":
+                $filters['order'] = 'ASC';
+                $filters['sort'] = 'created_at';
+                break;
+            case "oldest":
+                $filters['order'] = 'DESC';
+                $filters['sort'] = 'created_at';
+                break;
+            default:
+                $filters['order'] = $request->order ?? 'ASC';
+                $filters['sort'] = false;
+        }
+
+        // Set Limit & Offset
+        if ($request->page !== 'all') {
+            $filters['page'] = $request->page;
+            $filters['limit'] = 100;
+            if ($request->page > 1) $filters['offset'] = $request->page - 1 * $filters['limit'];
+        }
+
+        // Set Limit IF ONLY SORT BY "relevant"
+        if (!$request->sort || $request->sort === "relevant") {
+            if (!$request->search) {
+                $last3Keyword = $this->keywordLogModel->getLastKeyword($filters, 3);
+
+                if ($last3Keyword && count($last3Keyword) > 1) {
+                    $keywords = [];
+                    foreach ($last3Keyword as $key => $value) {
+                        array_push($keywords, $value['keyword']);
+                    }
+                    $filters['multi-search'] = $keywords;
+                } else if (count($last3Keyword) == 1) {
+                    $filters['search'] = $last3Keyword[0]['keyword'];
                 }
+            }
 
-                if ($value['product_id'] && $value['product_id'] !== '') {
-                    $prd = array(
-                        'id' => $value['product_id'],
-                        'name' => $value['product_name'],
-                        'store_id' => $value['store_id']
-                    );
-                    $prods = $data[$value['store_id']]['products'];
-                    array_push($prods, $prd);
+            if ($request->page !== 'all') {
+                $filters['timelimit'] = date('Y-m-d H:i:s', strtotime('-1 hour'));
+                $pageData = $this->storeLogModel->thisPageLog($filters);
 
-                    $data[$value['store_id']]['products'] = $prods ?? [];
+                if ($pageData && count($pageData) > 0) {
+                    $filters['where_in'] = explode(',', $pageData[0]->store_id);
                 }
+                if ($request->page > 1 && !$pageData || count($pageData) <= 0) {
+                    $prevData = $this->storeLogModel->previousLog($filters);
+                    $notIn = [];
+
+                    if ($prevData && count($prevData) > 0){
+                        foreach($prevData as $key => $value) {
+                            $notIn = array_merge($notIn, explode(',', $value['store_id']));
+                        }
+
+                        $filters['where_not_in'] = $notIn;
+                    }
+                }
+            }
+        }
+
+        // Log Client keyword
+        if ($request->search) {
+            KeywordLog::upsert([
+                'client_ip' => $filters['client_ip'],
+                'user_id' => auth()->guard('api')->user()->id ?? NULL,
+                'keyword' => $request->search,
+                'created_at' => now(),
+                'created_tz' => date_default_timezone_get(),
+                'updated_at' => now(),
+                'updated_tz' => date_default_timezone_get()
+            ], ['client_ip', 'user_id', 'keyword'], ['updated_at', 'updated_tz']);
+        }
+
+        // Get Store Data
+        if ($request->with_product) {
+            $storesData = $this->storeModel->getStores($filters);
+        } else {
+            $storesData = $this->storeModel->getAllStore($filters);
+        }
+
+        if ($storesData && count($storesData) > 0) {
+            if ($request->with_product) {
+                $data = [];
+                foreach ($storesData as $key => $value) {
+                    if (!array_key_exists($value['store_id'], $data)) {
+                        $data[$value['store_id']] = $value;
+                        $data[$value['store_id']]['products'] = [];
+                    }
+
+                    if ($value['product_id'] && $value['product_id'] !== '') {
+                        $prd = array(
+                            'id' => $value['product_id'],
+                            'name' => $value['product_name'],
+                            'store_id' => $value['store_id']
+                        );
+                        $prods = $data[$value['store_id']]['products'];
+                        array_push($prods, $prd);
+
+                        $data[$value['store_id']]['products'] = $prods ?? [];
+                    }
+                }
+            } else {
+                $data = $storesData;
+            }
+
+            // Log showed row (ONLY IF SORT "relevant")
+            if (!$request->sort || $request->sort === "relevant" && $request->page !== 'all') {
+                $storeID = [];
+                foreach($storesData as $values) {
+                    array_push($storeID, $values['store_id']);
+                }
+                $storeID = implode(',', $storeID);
+
+                ShowStoreLog::upsert([
+                    'client_ip' => $filters['client_ip'],
+                    'user_id' => auth()->guard('api')->user()->id ?? NULL,
+                    'page' => $request->page,
+                    'keyword' => $request->search,
+                    'store_id' => $storeID,
+                    'created_at' => now(),
+                    'created_tz' => date_default_timezone_get(),
+                    'updated_at' => now(),
+                    'updated_tz' => date_default_timezone_get()
+                ], ['client_ip', 'user_id', 'page', 'keyword'], ['store_id', 'updated_at', 'updated_tz']);
             }
 
             return response()->json([
                 'success' => true,
-                'error' => false,
+                'search' => $request->search,
+                'sort_by' => $request->sort,
+                'sort_order' => $filters['order'],
+                'page' => $request->page,
                 'count_data' => count(array_values($data)),
-                // 'count_all' +> ,
+                'count_all' => $this->storeModel->countAll($filters),
                 'data' => StoreResource::collection(array_values($data))
             ], 200);
         } else {
             return response()->json([
-                'error' => true,
+                'success' => false,
                 'message' => 'No data available!'
             ], 404);
         }
@@ -113,12 +247,13 @@ class StoreController extends Controller
         $this->messages['user_id.required'] = 'User ID is required';
         $this->messages['user_id.unique'] = 'User already has store registered';
 
+        $request->merge(['user_id' => auth()->guard('api')->user()->id]);
+
         $validator = Validator::make($request->all(), $this->rules, $this->messages);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'error' => true,
                 'message' => 'The given data was invalid',
                 'errors' => $validator->errors()
             ], 400);
@@ -130,7 +265,7 @@ class StoreController extends Controller
             $validateCategory = StoreCategory::find($validator->validated()['category_id']);
 
             if ($validateUser === null || $validateProvince === null || $validateCity === null || $validateDistrict === null || $validateCategory === null) {
-                $validateUser === null ? $errors['user_id'][] = 'User ID not found' : '';
+                $validateUser === null ? $errors['user_id'][] = 'User not found' : '';
                 $validateProvince === null ? $errors['province_id'][] = 'Province ID not found' : '';
                 $validateCity === null ? $errors['city_id'][] = 'City ID not found' : '';
                 $validateDistrict === null ? $errors['district_id'][] = 'District ID not found' : '';
@@ -138,7 +273,6 @@ class StoreController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'error' => true,
                     'message' => 'The given data was invalid',
                     'errors' => $errors
                 ], 400);
@@ -156,7 +290,11 @@ class StoreController extends Controller
                     'category_id' => $validator->validated()['category_id'],
                     'user_id' => $validator->validated()['user_id'],
                     'image_path' => $request->file('image')->store('store-images'),
-                    'image_mime' => $request->file('image')->getMimeType()
+                    'image_mime' => $request->file('image')->getMimeType(),
+                    'created_at' => now(),
+                    'created_tz' => date_default_timezone_get(),
+                    'updated_at' => now(),
+                    'updated_tz' => date_default_timezone_get()
                 ];
 
                 $inputStore = Store::insert($validated);
@@ -164,13 +302,11 @@ class StoreController extends Controller
                 if ($inputStore) {
                     return response()->json([
                         'success' => true,
-                        'error' => false,
                         'message' => 'Success add new data'
                     ], 201);
                 } else {
                     return response()->json([
                         'success' => false,
-                        'error' => false,
                         'message' => 'Failed add new data'
                     ], 500);
                 }
@@ -184,25 +320,28 @@ class StoreController extends Controller
      * @param  \App\Models\Store  $store
      * @return \Illuminate\Http\Response
      */
-    public function show($slug)
+    public function show(Request $request, $slug)
     {
         if ($slug) {
-            $store = $this->store->findStore($slug);
+            $store = $this->storeModel->findStore($slug)[0];
+            if ($request->with_product) {
+                $store['products'] = ProductResource::collection($this->productModel->getProducts(['store'], $store->store_id));
+            }
 
-            if (count($store) > 0) {
+            if ($store) {
                 return response()->json([
                     'success' => true,
-                    'data' => StoreResource::make($store[0])
+                    'data' => StoreResource::make($store)
                 ], 200);
             } else {
                 return response()->json([
-                    'error' => true,
+                    'success' => false,
                     'message' => 'Data with ID = '.$slug.' or domain = '.$slug.' not found!'
                 ], 404);
             }
         } else {
             return response()->json([
-                'error' => true,
+                'success' => false,
                 'message' => 'Please provide path parameter (ID or slug domain)!'
             ], 400);
         }
@@ -219,75 +358,81 @@ class StoreController extends Controller
     {
         if ($id) {
             if (is_numeric($id)) {
-                $this->rules['store_name'] = 'required|min:1|max:60|unique:App\Models\Store,store_name, '.$id;
-                $this->rules['domain'] = 'required|min:1|max:25|regex:/^((?!-)[\d\w\-]{1,25}(?<!-))+$/|unique:App\Models\Store,domain, '.$id;
+                $store = Store::where('user_id', auth()->guard('api')->user()->id)->find($id);
+                if ($store) {
+                    $this->rules['store_name'] = 'required|min:1|max:60|unique:App\Models\Store,store_name, '.$id;
+                    $this->rules['domain'] = 'required|min:1|max:25|regex:/^((?!-)[\d\w\-]{1,25}(?<!-))+$/|unique:App\Models\Store,domain, '.$id;
 
-                $validator = Validator::make($request->all(), $this->rules, $this->messages);
+                    $validator = Validator::make($request->all(), $this->rules, $this->messages);
 
-                if ($validator->fails()) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => true,
-                        'message' => 'The given data was invalid',
-                        'errors' => $validator->errors()
-                    ], 400);
-                } else {
-                    $validateProvince = Province::find($validator->validated()['province_id']);
-                    $validateCity = City::find($validator->validated()['city_id']);
-                    $validateDistrict = District::find($validator->validated()['district_id']);
-                    $validateCategory = StoreCategory::find($validator->validated()['category_id']);
-
-                    if ($validateProvince === null || $validateCity === null || $validateDistrict === null || $validateCategory === null) {
-                        $validateProvince === null ? $errors['province_id'] = 'Province ID not found' : '';
-                        $validateCity === null ? $errors['city_id'] = 'City ID not found' : '';
-                        $validateDistrict === null ? $errors['district_id'] = 'District ID not found' : '';
-                        $validateCategory === null ? $errors['category_id'] = 'Category ID not found' : '';
-
+                    if ($validator->fails()) {
                         return response()->json([
                             'success' => false,
-                            'error' => true,
                             'message' => 'The given data was invalid',
-                            'errors' => $errors
+                            'errors' => $validator->errors()
                         ], 400);
                     } else {
-                        $inputData = array(
-                            "store_name" => $validator->validated()['store_name'],
-                            "domain" => $validator->validated()['domain'],
-                            "email" => $validator->validated()['email'],
-                            "phone" => $validator->validated()['phone'],
-                            "whatsapp" => $validator->validated()['whatsapp'],
-                            "full_address" => $validator->validated()['full_address'],
-                            "district_id" => $validator->validated()['district_id'],
-                            "city_id" => $validator->validated()['city_id'],
-                            "province_id" => $validator->validated()['province_id'],
-                            "category_id" => $validator->validated()['category_id']
-                        );
-                        $updateStore = Store::where('id', $id)->update($inputData);
+                        $validateProvince = Province::find($validator->validated()['province_id']);
+                        $validateCity = City::find($validator->validated()['city_id']);
+                        $validateDistrict = District::find($validator->validated()['district_id']);
+                        $validateCategory = StoreCategory::find($validator->validated()['category_id']);
 
-                        if ($updateStore) {
+                        if ($validateProvince === null || $validateCity === null || $validateDistrict === null || $validateCategory === null) {
+                            $validateProvince === null ? $errors['province_id'] = 'Province ID not found' : '';
+                            $validateCity === null ? $errors['city_id'] = 'City ID not found' : '';
+                            $validateDistrict === null ? $errors['district_id'] = 'District ID not found' : '';
+                            $validateCategory === null ? $errors['category_id'] = 'Category ID not found' : '';
+
                             return response()->json([
-                                'success' => true,
-                                'error' => true,
-                                'message' => 'Data updated successfully'
-                            ], 200);
+                                'success' => false,
+                                'message' => 'The given data was invalid',
+                                'errors' => $errors
+                            ], 400);
                         } else {
-                            return response()->json([
-                                'success' => true,
-                                'error' => true,
-                                'message' => 'Failed to update data'
-                            ], 500);
+                            $updateData = array(
+                                "store_name" => $validator->validated()['store_name'],
+                                "domain" => $validator->validated()['domain'],
+                                "email" => $validator->validated()['email'],
+                                "phone" => $validator->validated()['phone'],
+                                "whatsapp" => $validator->validated()['whatsapp'],
+                                "full_address" => $validator->validated()['full_address'],
+                                "district_id" => $validator->validated()['district_id'],
+                                "city_id" => $validator->validated()['city_id'],
+                                "province_id" => $validator->validated()['province_id'],
+                                "category_id" => $validator->validated()['category_id'],
+                                "updated_at" => now(),
+                                "updated_tz" => date_default_timezone_get()
+                            );
+                            $updateStore = Store::where('id', $id)->update($updateData);
+
+                            if ($updateStore) {
+                                return response()->json([
+                                    'success' => true,
+                                    'message' => 'Data updated successfully'
+                                ], 200);
+                            } else {
+                                return response()->json([
+                                    'success' => false,
+                                    'message' => 'Failed to update data'
+                                ], 500);
+                            }
                         }
                     }
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Data not found'
+                    ], 404);
                 }
             } else {
                 return response()->json([
-                    'error' => true,
+                    'success' => false,
                     'message' => 'Pramater ID is invalid'
                 ], 400);
             }
         } else {
             return response()->json([
-                'error' => true,
+                'success' => false,
                 'message' => 'Please provide parameter "id"!'
             ], 400);
         }
@@ -303,30 +448,121 @@ class StoreController extends Controller
     {
         if ($id) {
             if (is_numeric($id)) {
-                $deleteStore = Store::where('id', $id)->delete();
+                $store = Store::where('user_id', auth()->guard('api')->user()->id)->find($id);
+                if ($store) {
+                    $deleteStore = Store::where('id', $id)->delete();
 
-                if ($deleteStore) {
-                    return response()->json([
-                        'success' => true,
-                        'error' => false,
-                        'message' => 'Data deleted'
-                    ], 200);
+                    if ($deleteStore) {
+                        if ($store->image_path) {
+                            Storage::delete($store->image_path);
+                        }
+
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Data deleted'
+                        ], 200);
+                    } else {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Failed to delete data'
+                        ], 500);
+                    }
                 } else {
                     return response()->json([
-                        'error' => true,
-                        'message' => 'Failed to delete data'
-                    ], 500);
+                        'success' => false,
+                        'message' => 'Data not found'
+                    ], 404);
                 }
             } else {
                 return response()->json([
-                    'error' => true,
+                    'success' => false,
                     'message' => 'Pramater ID is invalid'
                 ], 400);
             }
         } else {
             return response()->json([
-                'error' => true,
+                'success' => false,
                 'message' => 'Please provide an ID!'
+            ], 400);
+        }
+    }
+
+    public function productInStore(Request $request, $id) {
+        $request->merge(['store' => $id]);
+        $products = $this->productModel->getProducts($request);
+
+        if ($products && count($products) > 0) {
+            return response()->json([
+                'success' => true,
+                'count_data' => count($products),
+                'count_all' => $this->productModel->countAll($request)[0]->count_all,
+                'data' => ProductResource::collection($products)
+            ], 200);
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data not found'
+            ], 404);
+        }
+    }
+
+    public function updateImage (Request $request, $id) {
+        if ($id) {
+            if (is_numeric($id)) {
+                $store = Store::where('user_id', auth()->guard('api')->user()->id)->find($id);
+                if ($store) {
+                    $validator = Validator::make($request->only('image'), ['image' => 'required|image|file|max:2048'], [
+                        'image.required' => 'Image field is required',
+                        'image.image' => 'File must be an image (jpg, jpeg, png, bmp, gif, svg, or webp)',
+                        'image.max' => 'File size can not be greater than 2MB (2048 KB)'
+                    ]);
+
+                    if ($validator->fails()) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'The given data was invalid',
+                            'errors' => $validator->errors()
+                        ], 400);
+                    } else {
+                        $updateData = [
+                            'image_path' => $request->file('image')->store('store-images'),
+                            'image_mime' => $request->file('image')->getMimeType()
+                        ];
+
+                        $updateImage = Store::where('id', $id)->update($updateData);
+
+                        if ($updateImage) {
+                            if ($store->image_path) {
+                                Storage::delete($store->image_path);
+                            }
+
+                            return response()->json([
+                                'success' => true,
+                                'message' => 'Data updated successfully'
+                            ], 200);
+                        } else {
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Failed to update data'
+                            ], 500);
+                        }
+                    }
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Data not found'
+                    ], 404);
+                }
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pramater ID is invalid'
+                ], 400);
+            }
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please provide parameter "id"!'
             ], 400);
         }
     }

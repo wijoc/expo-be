@@ -25,7 +25,8 @@ class CreateUsersTable extends Migration
             $table->string('image_path', 225)->nullable();
             $table->string('image_mime', 225)->nullable();
             $table->string('role', 5);
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent();
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
         });
 
         Schema::create('user_address', function (Blueprint $table) {
@@ -33,7 +34,8 @@ class CreateUsersTable extends Migration
             $table->longText('full_address');
             $table->text('note');
             $table->string('postal_code', 50);
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent();
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('user_id')->constrained('tb_user')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('district_id')->constrained('ref_district')->onUpdate('cascade')->onDelete('cascade');

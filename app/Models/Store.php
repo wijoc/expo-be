@@ -31,9 +31,58 @@ class Store extends Model
     }
 
     public function scopeFilter ($query, $filter) {
-        $query->when($filter['search'] ?? false, function ($query, $keyword) {
-            $query->where('store.store_name', 'like', '%'.$keyword.'%');
+        if ($filter['search']) {
+            $query->where('store.store_name', 'like', '%'.$filter['search'].'%');
+        } else {
+            $query->when($filter['multi-search'] ?? false, function ($query, $keywords) {
+                for ($i = 0; $i < count($keywords); $i++) {
+                    if ($i = 0) {
+                        $query->where('store.store_name', 'like', '%'.$keywords[$i].'%');
+                    } else {
+                        $query->orWhere('store.store_name', 'like', '%'.$keywords[$i].'%');
+                    }
+                }
+            });
+        }
+    }
+
+    public function scopeSorting ($query, $sort) {
+        $query->when($sort['sort'], function ($query, $sort) {
+            $query->orderBy($sort, $sort['order'] ?? 'ASC');
+        }, function ($query) {
+            $query->orderByRaw('RAND() ASC');
         });
+    }
+
+    public function scopeLimitation ($query, $filter) {
+        if ($filter['page'] !== 'all') {
+            // if ($filter['sort'] || !isset($filter['where_not_in']) || empty($filter['where_not_in'])) {
+            if (!$filter['sort'] && isset($filter['where_not_in']) && !empty($filter['where_not_in'])) {
+                $query->whereNotIn('id', $filter['where_not_in']);
+            } else if (!$filter['sort'] && isset($filter['where_in']) && !empty($filter['where_in']) ) {
+                $query->whereIn('id', $filter['where_in']);
+            }
+
+            $query->when($filter['limit'] ?? false, function ($query, $limit) {
+                $query->limit($limit);
+            });
+
+            $query->when($filter['offset'] ?? false, function ($query, $offset) {
+                $query->offset($offset);
+            });
+        }
+    }
+
+    public function countAll ($filters = null) {
+        return Product::selectRaw('COUNT(id) as count_all')->filter($filters)->get();
+    }
+
+    public function getAllStore ($filters) {
+        return Store::select('store.id as store_id', 'store.*')
+                    ->filter($filters)
+                    ->limitation($filters)
+                    ->sorting($filters)
+                    ->with(['province', 'city'])->get();
     }
 
     public function getStores ($filters) {
@@ -53,7 +102,8 @@ class Store extends Model
                     $query->whereNull('product.id');
                 })
                 ->filter($filters)
-                ->orderBy('store.id')
+                ->sort($filters)
+                ->limit($filters)
                 ->with(['province', 'city'])->get();
 
         /** If you're using MySQL, USE THIS QUERY */
@@ -76,7 +126,6 @@ class Store extends Model
             //                     $query->whereNull('product.id');
             //                 });
             //             })
-            //         ->orderBy('store.id')
             //         ->with(['province', 'city'])
             //         ->get();
     }

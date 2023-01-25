@@ -15,7 +15,7 @@ class CategorySeeder extends Seeder
      */
     public function run()
     {
-        StoreCategory::create(
+        StoreCategory::insert([
             [
                 'name' => 'Barang'
             ],
@@ -58,9 +58,9 @@ class CategorySeeder extends Seeder
             [
                 'name' => 'Kecantikan'
             ]
-        );
+        ]);
 
-        ProductCategory::create(
+        ProductCategory::insert([
             [
                 'id' => 1,
                 'name' => 'Barang',
@@ -109,6 +109,6 @@ class CategorySeeder extends Seeder
                 'is_sub_category' => '1',
                 'parent_id' => 3
             ]
-        );
+        ]);
     }
 }

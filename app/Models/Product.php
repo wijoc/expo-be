@@ -22,33 +22,37 @@ class Product extends Model
         return $this->belongsTo('App\Models\ProductCategory', 'category_id', 'id');
     }
 
-    protected function scopeFilter ($query, $filter) {
-        $query->when($filter['search'] ?? false, function ($query, $keyword) {
-            $query->where('name', 'like', '%'.$keyword.'%');
+    protected function scopeFilter ($query, $filters) {
+        $query->when($filters['search'] ?? false, function ($query, $keyword) {
+            $query->where('product.name', 'like', '%'.$keyword.'%');
         });
 
-        $query->when($filter['condition'] ?? false, function ($query, $condition) {
-            if ($condition == 'new') {
+        $query->when($filters['condition'] ?? false, function ($query, $condition) {
+            if (strtolower($condition) == 'new') {
                 $query->where('condition', '=', 'N');
-            } else if ($condition == 'secondhand') {
+            } else if (strtolower($condition) == 'secondhand') {
                 $query->where('condition', 'SH');
             }
         });
 
-        $query->when($filter['min_price'] ?? false, function ($query, $minPrice) {
+        $query->when($filters['min_price'] ?? false, function ($query, $minPrice) {
             $query->where('net_price', '>=', $minPrice);
         });
 
-        $query->when($filter['max_price'] ?? false, function ($query, $maxPrice) {
+        $query->when($filters['max_price'] ?? false, function ($query, $maxPrice) {
             $query->where('net_price', '<=', $maxPrice);
+        });
+
+        $query->when($filters['store'] ?? false, function ($query, $store) {
+            $query->where('store_id', $store);
         });
     }
 
-    public function countAll () {
-        return Product::selectRaw('COUNT(id) as count_all')->get();
+    public function countAll ($filters = null) {
+        return Product::selectRaw('COUNT(id) as count_all')->filter($filters)->get();
     }
 
-    public function getProducts ($filter) {
+    public function getProducts ($filters) {
         $category = DB::table('product_category')
                         ->select('c.*', 'p.name as parent_name')
                         ->from('product_category as c')
@@ -79,7 +83,7 @@ class Product extends Model
                     ->leftJoinSub($category, 'category', function ($join) {
                         $join->on('category.id', '=', 'product.category_id');
                     })
-                    ->filter($filter)
+                    ->filter($filters)
                     ->get();
     }
 

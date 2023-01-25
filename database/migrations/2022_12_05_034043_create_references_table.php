@@ -16,14 +16,20 @@ class CreateReferencesTable extends Migration
         Schema::create('ref_province', function (Blueprint $table) {
             $table->id();
             $table->string('name', 225);
-            $table->timestamps();
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
         });
 
         Schema::create('ref_city', function (Blueprint $table) {
             $table->id();
             $table->string('name', 225);
             $table->integer('ro_api_code');
-            $table->timestamps();
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('province_id')->constrained('ref_province')->onUpdate('cascade')->onDelete('cascade');
         });
@@ -31,7 +37,10 @@ class CreateReferencesTable extends Migration
         Schema::create('ref_district', function (Blueprint $table) {
             $table->id();
             $table->string('name', 225);
-            $table->timestamps();
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('city_id')->constrained('ref_city')->onUpdate('cascade')->onDelete('cascade');
         });
@@ -39,14 +48,20 @@ class CreateReferencesTable extends Migration
         Schema::create('ref_ecommerce', function (Blueprint $table) {
             $table->id();
             $table->string('name', 50);
-            $table->timestamps();
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
         });
 
         Schema::create('ref_delivery_service', function (Blueprint $table) {
             $table->id();
             $table->string('name', 50);
             $table->string('ro_api_param', 50);
-            $table->timestamps();
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
         });
     }
 

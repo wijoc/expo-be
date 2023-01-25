@@ -45,7 +45,7 @@ class UserController extends Controller
                 'email' => 'required|nullable|email:dns|unique:App\Models\User',
                 // 'phone' => ['required_without:email', 'nullable', 'regex:/^(0[1-9]{1}|(\+[1-9]{1}))[0-9]{3,13}$/', 'min:8', 'unique:App\Models\User'],
                 'password' => 'required|confirmed|min:8|max:16',
-                'role' => ['required', Rule::in(["admin", "user"])]
+                'role' => ['required', Rule::in(["su", "admin", "user"])]
             ],
             [
                 'name.required' => 'Name is required',
@@ -115,7 +115,7 @@ class UserController extends Controller
                 'name' => 'required|min:1|max:50',
                 'email' => 'required|nullable|email:dns|unique:App\Models\User',
                 // 'phone' => ['required_without:email', 'nullable', 'regex:/^(0[1-9]{1}|(\+[1-9]{1}))[0-9]{3,13}$/', 'min:8', 'unique:App\Models\User'],
-                'password' => 'required|confirmed|min:8|max:16',
+                'password' => 'required|confirmed|min:8',
                 'image' => 'image|file|max:2048',
             ],
             [
@@ -133,7 +133,6 @@ class UserController extends Controller
 
                 'password.required' => 'Password is required',
                 'password.min' => 'Password must be at least 8 character',
-                'password.max' => 'Password cannot be more than 16 characters',
                 'image.image' => 'File must be an image (jpg, jpeg, png, bmp, gif, svg, or webp)',
                 'image.max' => 'File size can not be greater than 2MB (2048 KB)',
             ]
@@ -142,7 +141,6 @@ class UserController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'error' => true,
                 'message' => 'The given data was invalid',
                 'errors' => $validator->errors()
             ], 400);
@@ -163,15 +161,15 @@ class UserController extends Controller
             if ($inputUser) {
                 return response()->json([
                     'success' => true,
-                    'error' => false,
+                    'errors' => false,
                     'message' => 'Success add new data'
                 ], 200);
             } else {
                 return response()->json([
                     'success' => false,
-                    'error' => false,
+                    'errors' => false,
                     'message' => 'Failed add new data'
-                ], 400);
+                ], 500);
             }
         }
     }
@@ -199,7 +197,7 @@ class UserController extends Controller
         } else {
             $credentials = $request->only(['email', 'password']);
 
-            if (! $jwtoken = auth()->guard('api')->claims(['type' => 'access_token'])->attempt($credentials)) {
+            if (! $jwtoken = auth()->guard('api')->claims(['type' => 'access_token'])->setTTL(31536000)->attempt($credentials)) {
                 return response()->json([
                     'success' => false,
                     'error' => true,

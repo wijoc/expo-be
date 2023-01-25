@@ -33,6 +33,7 @@ use App\Http\Controllers\StoreCategoryController;
         // Store Routes
         Route::get('/stores', [StoreController::class, 'index']);
         Route::get('/stores/{store}', [StoreController::class, 'show']);
+        Route::get('/stores/{store}/products', [StoreController::class, 'productInStore']);
 
         // Product Routes
         Route::get('/products', [ProductController::class, 'index']);
@@ -55,6 +56,7 @@ use App\Http\Controllers\StoreCategoryController;
   // Store Protected Routes
     Route::group(['prefix' => 'beta', 'middleware' => 'jauth', 'controller' => StoreController::class], function () {
         Route::post('/stores', 'store');
+        Route::post('/stores/{id}', 'updateImage');
         Route::put('/stores/{id}', 'update');
         Route::delete('/stores/{id}', 'destroy');
     });
@@ -62,6 +64,7 @@ use App\Http\Controllers\StoreCategoryController;
   // Product Protected Routes
     Route::group(['prefix' => 'beta', 'middleware' => 'jauth', 'controller' => ProductController::class], function () {
         Route::post('/products', 'store');
+        Route::post('/products/{id}', 'updateImage');
         Route::put('/products/{id}', 'update');
         Route::delete('/products/{id}', 'destroy');
     });

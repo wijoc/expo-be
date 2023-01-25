@@ -17,7 +17,10 @@ class CreateTransactionsTable extends Migration
             $table->id();
             $table->unsignedInteger('product_id');
             $table->unsignedInteger('qty');
-            $table->timestamps();
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('user_id')->constrained('tb_user')->onUpdate('cascade')->onDelete('cascade');
         });
@@ -35,7 +38,10 @@ class CreateTransactionsTable extends Migration
             $table->integer('payment_status')->nullable()->default(0);
             $table->timestamp('due_date')->default(NOW());
             $table->integer('return_status')->nullable()->default(0);
-            $table->timestamps();
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('user_id')->constrained('tb_user')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('delivery_service_id')->constrained('ref_delivery_service')->onUpdate('cascade')->onDelete('cascade');
@@ -49,7 +55,10 @@ class CreateTransactionsTable extends Migration
             $table->decimal('disc_percent', $precision = 3, $scale = 2)->nullable()->default(0);
             $table->decimal('disc_price', $precision = 10, $scale = 2)->nullable()->default(0);
             $table->decimal('product_price', $precision = 10, $scale = 2);
-            $table->timestamps();
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('transaction_id')->constrained('transaction')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('product_id')->constrained('product')->onUpdate('cascade')->onDelete('cascade');
@@ -59,7 +68,10 @@ class CreateTransactionsTable extends Migration
             $table->id();
             $table->string('path', 225);
             $table->string('mime', 225);
-            $table->timestamps();
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('transaction_id')->constrained('transaction')->onUpdate('cascade')->onDelete('cascade');
         });

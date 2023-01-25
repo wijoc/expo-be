@@ -15,7 +15,7 @@ class UserSeeder extends Seeder
      */
     public function run()
     {
-        User::create(
+        User::insert(
             [
                 'name' => 'User Test 1',
                 'email' => 'user1@test.ty',

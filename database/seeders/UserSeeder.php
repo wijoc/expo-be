@@ -15,7 +15,7 @@ class UserSeeder extends Seeder
      */
     public function run()
     {
-        User::insert(
+        User::insert([
             [
                 'name' => 'User Test 1',
                 'email' => 'user1@test.ty',
@@ -24,7 +24,11 @@ class UserSeeder extends Seeder
                 'phone' => null,
                 'phone_prefix' => null,
                 'role' => 'user',
-                'password' => Hash::make('qwerty')
+                'password' => Hash::make('qwerty'),
+                'created_at' => now(),
+                'created_tz' => date_default_timezone_get(),
+                'updated_at' => now(),
+                'updated_tz' => date_default_timezone_get()
             ],
             [
                 'name' => 'admin Test 1',
@@ -34,10 +38,14 @@ class UserSeeder extends Seeder
                 'phone' => null,
                 'phone_prefix' => null,
                 'role' => 'admin',
-                'password' => Hash::make('admin')
+                'password' => Hash::make('admin'),
+                'created_at' => now(),
+                'created_tz' => date_default_timezone_get(),
+                'updated_at' => now(),
+                'updated_tz' => date_default_timezone_get()
             ],
-        );
+        ]);
 
-        // User::factory()->count(2)->create();
+        User::factory()->count(5)->create();
     }
 }

@@ -50,7 +50,8 @@ class Store extends Model
         $query->when($sort['sort'], function ($query, $sort) {
             $query->orderBy($sort, $sort['order'] ?? 'ASC');
         }, function ($query) {
-            $query->orderByRaw('RAND() ASC');
+            // $query->orderByRaw('RAND() ASC'); // For MySQL
+            $query->orderByRaw('RANDOM() ASC'); // For Postgres
         });
     }
 
@@ -74,11 +75,12 @@ class Store extends Model
     }
 
     public function countAll ($filters = null) {
-        return Product::selectRaw('COUNT(id) as count_all')->filter($filters)->get();
+        return Store::selectRaw('COUNT(id) as count_all')->filter($filters)->get();
     }
 
     public function getAllStore ($filters) {
-        return Store::select('store.id as store_id', 'store.*')
+        return Store::select('store.id as store_id', 'store.*', 'tz')
+                    ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
                     ->filter($filters)
                     ->limitation($filters)
                     ->sorting($filters)
@@ -93,8 +95,9 @@ class Store extends Model
        * Not yet test the query in another type database */
 
         /** If you're using PostgreSQL, USE THIS QUERY */
-        return Store::select('store.id as store_id', 'store.*', 'product.id as product_id', 'product.name as product_name', 'product.store_id as product_store')
+        return Store::select('store.id as store_id', 'store.*', 'product.id as product_id', 'product.name as product_name', 'product.store_id as product_store', 'tz')
                 ->leftJoin('product', 'product.store_id', '=', 'store.id')
+                ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
                 ->whereIn('product.id', function ($query) {
                     $query->select('id')->from('product')->whereRaw('product.store_id = store.id')->limit(3);
                 })
@@ -102,8 +105,8 @@ class Store extends Model
                     $query->whereNull('product.id');
                 })
                 ->filter($filters)
-                ->sort($filters)
-                ->limit($filters)
+                ->sorting($filters)
+                ->limitation($filters)
                 ->with(['province', 'city'])->get();
 
         /** If you're using MySQL, USE THIS QUERY */
@@ -152,8 +155,4 @@ class Store extends Model
                     ->with(['province', 'city', 'district'])
                     ->get();
     }
-
-    // public function insertStore ($request) {
-    //     $this->
-    // }
 }

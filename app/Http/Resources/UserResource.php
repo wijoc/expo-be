@@ -17,7 +17,8 @@ class UserResource extends JsonResource
         $toArr = [
             'name' => $this->name,
             'image' => $this->image_path,
-            'role' => $this->role
+            'role' => $this->role,
+            'created_at' => date('c', strtotime($this->created_at))
         ];
 
         $loggedInUser = auth()->guard('api')->user();

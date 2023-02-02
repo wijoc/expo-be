@@ -21,7 +21,7 @@ class CreateExhibitionsTable extends Migration
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');
-            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });
 
         Schema::create('store_category', function (Blueprint $table) {
@@ -30,7 +30,7 @@ class CreateExhibitionsTable extends Migration
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');
-            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });
 
         Schema::create('store', function (Blueprint $table) {
@@ -47,7 +47,7 @@ class CreateExhibitionsTable extends Migration
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');
-            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('user_id')->constrained('tb_user')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('district_id')->constrained('ref_district')->onUpdate('cascade')->onDelete('cascade');
@@ -63,7 +63,7 @@ class CreateExhibitionsTable extends Migration
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');
-            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('store_id')->constrained('store')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('ecommerce_id')->constrained('ref_ecommerce')->onUpdate('cascade')->onDelete('cascade');
@@ -74,7 +74,7 @@ class CreateExhibitionsTable extends Migration
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');
-            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('store_id')->constrained('store')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('delivery_service_id')->constrained('ref_delivery_service')->onUpdate('cascade')->onDelete('cascade');
@@ -82,6 +82,7 @@ class CreateExhibitionsTable extends Migration
 
         Schema::create('product', function (Blueprint $table) {
             $table->id();
+            $table->uuid('product_uuid')->unique();
             $table->string('name', 50);
             $table->string('condition', 2);
             $table->decimal('initial_price', $precision = 13, $scale = 2);
@@ -93,7 +94,7 @@ class CreateExhibitionsTable extends Migration
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');
-            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('store_id')->constrained('store')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('category_id')->constrained('product_category')->onUpdate('cascade')->onDelete('cascade');
@@ -101,14 +102,15 @@ class CreateExhibitionsTable extends Migration
 
         Schema::create('product_img', function (Blueprint $table) {
             $table->id();
+            $table->uuid('product_uuid');
             $table->string('mime', 225);
             $table->string('path', 225);
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');
-            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
-            $table->foreignId('product_id')->constrained('product')->onUpdate('cascade')->onDelete('cascade');
+            $table->foreign('product_uuid')->references('product_uuid')->on('product')->onUpdate('cascade')->onDelete('cascade');
         });
     }
 

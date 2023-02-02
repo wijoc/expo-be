@@ -192,29 +192,65 @@ class StoreController extends Controller
                         $data[$value['store_id']]['products'] = $prods ?? [];
                     }
                 }
-            } else {
-                $data = $storesData;
+
+                $storesData = array_values($data);
             }
 
             // Log showed row (ONLY IF SORT "relevant")
-            if (!$request->sort || $request->sort === "relevant" && $request->page !== 'all') {
+            if ($request->page && $request->page !== 'all' && !$request->sort || $request->sort === "relevant") {
                 $storeID = [];
                 foreach($storesData as $values) {
                     array_push($storeID, $values['store_id']);
                 }
                 $storeID = implode(',', $storeID);
 
-                ShowStoreLog::upsert([
-                    'client_ip' => $filters['client_ip'],
-                    'user_id' => auth()->guard('api')->user()->id ?? NULL,
+                /** Update client search log IF YOU USING POSTGRESQL READ THIS !
+                 * Since non of field ['client_ip', 'user_id', 'page', 'keyword'] is unique
+                 * and sometime value is NULL, upsert not working for postgreSQL (maybe i don't know how)
+                 * so here this will check if row-data exist, and determine whether to insert or update.
+                 *
+                 * IF YOU USING MySQL / MairaDB, i think upsert will do just fine.
+                 */
+
+                $check = $this->storeLogModel->thisPageLog([
+                    'client_ip' => $filters['client_ip'] ?? null,
+                    'user_id' => auth()->guard('api')->user() ? auth()->guard('api')->user()->id : NULL,
                     'page' => $request->page,
-                    'keyword' => $request->search,
-                    'store_id' => $storeID,
-                    'created_at' => now(),
-                    'created_tz' => date_default_timezone_get(),
-                    'updated_at' => now(),
-                    'updated_tz' => date_default_timezone_get()
-                ], ['client_ip', 'user_id', 'page', 'keyword'], ['store_id', 'updated_at', 'updated_tz']);
+                    'search' => $request->search ?? null,
+                    'timelimit' => false
+                ])->first();
+
+                // ShowStoreLog::upsert([
+                //     'client_ip' => $filters['client_ip'] ?? null,
+                //     'user_id' => auth()->guard('api')->user() ? auth()->guard('api')->user()->id : NULL,
+                //     'page' => $request->page,
+                //     'keyword' => $request->search ?? null,
+                //     'store_id' => $storeID,
+                //     'created_at' => now(),
+                //     'created_tz' => date_default_timezone_get(),
+                //     'updated_at' => now(),
+                //     'updated_tz' => date_default_timezone_get()
+                // ], ['client_ip', 'user_id', 'page', 'keyword'], ['store_id', 'updated_at', 'updated_tz']);
+
+                if ($check) {
+                    ShowStoreLog::where('id', $check['id'])->update([
+                        'store_id' => $storeID,
+                        'updated_at' => now(),
+                        'updated_tz' => date_default_timezone_get()
+                    ]);
+                } else {
+                    ShowStoreLog::insert([
+                        'client_ip' => $filters['client_ip'] ?? null,
+                        'user_id' => auth()->guard('api')->user() ? auth()->guard('api')->user()->id : NULL,
+                        'page' => $request->page,
+                        'keyword' => null,
+                        'store_id' => $storeID,
+                        'created_at' => now(),
+                        'created_tz' => date_default_timezone_get(),
+                        'updated_at' => now(),
+                        'updated_tz' => date_default_timezone_get()
+                    ]);
+                }
             }
 
             return response()->json([
@@ -223,15 +259,16 @@ class StoreController extends Controller
                 'sort_by' => $request->sort,
                 'sort_order' => $filters['order'],
                 'page' => $request->page,
-                'count_data' => count(array_values($data)),
-                'count_all' => $this->storeModel->countAll($filters),
-                'data' => StoreResource::collection(array_values($data))
+                'count_data' => count($storesData),
+                'count_all' => $this->storeModel->countAll($filters)->first()['count_all'],
+                'data' => StoreResource::collection($storesData)
+                // 'data' => $data
             ], 200);
         } else {
             return response()->json([
                 'success' => false,
                 'message' => 'No data available!'
-            ], 404);
+            ], 200);
         }
     }
 
@@ -289,8 +326,8 @@ class StoreController extends Controller
                     'province_id' => $validator->validated()['province_id'],
                     'category_id' => $validator->validated()['category_id'],
                     'user_id' => $validator->validated()['user_id'],
-                    'image_path' => $request->file('image')->store('store-images'),
-                    'image_mime' => $request->file('image')->getMimeType(),
+                    'image_path' => $request->file('image') ? $request->file('image')->store('store-images') : null,
+                    'image_mime' => $request->file('image') ? $request->file('image')->getMimeType() : null,
                     'created_at' => now(),
                     'created_tz' => date_default_timezone_get(),
                     'updated_at' => now(),
@@ -337,7 +374,7 @@ class StoreController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Data with ID = '.$slug.' or domain = '.$slug.' not found!'
-                ], 404);
+                ], 200);
             }
         } else {
             return response()->json([
@@ -422,7 +459,7 @@ class StoreController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => 'Data not found'
-                    ], 404);
+                    ], 200);
                 }
             } else {
                 return response()->json([
@@ -471,7 +508,7 @@ class StoreController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => 'Data not found'
-                    ], 404);
+                    ], 200);
                 }
             } else {
                 return response()->json([
@@ -502,7 +539,7 @@ class StoreController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Data not found'
-            ], 404);
+            ], 200);
         }
     }
 
@@ -551,7 +588,7 @@ class StoreController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => 'Data not found'
-                    ], 404);
+                    ], 200);
                 }
             } else {
                 return response()->json([

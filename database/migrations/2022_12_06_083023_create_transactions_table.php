@@ -20,7 +20,7 @@ class CreateTransactionsTable extends Migration
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');
-            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('user_id')->constrained('tb_user')->onUpdate('cascade')->onDelete('cascade');
         });
@@ -41,7 +41,7 @@ class CreateTransactionsTable extends Migration
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');
-            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('user_id')->constrained('tb_user')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('delivery_service_id')->constrained('ref_delivery_service')->onUpdate('cascade')->onDelete('cascade');
@@ -58,7 +58,7 @@ class CreateTransactionsTable extends Migration
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');
-            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('transaction_id')->constrained('transaction')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('product_id')->constrained('product')->onUpdate('cascade')->onDelete('cascade');
@@ -71,7 +71,7 @@ class CreateTransactionsTable extends Migration
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');
-            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('transaction_id')->constrained('transaction')->onUpdate('cascade')->onDelete('cascade');
         });

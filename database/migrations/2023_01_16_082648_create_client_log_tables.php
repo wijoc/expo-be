@@ -16,6 +16,7 @@ class CreateClientLogTables extends Migration
         Schema::create('client_search_product_log', function (Blueprint $table) {
             $table->id();
             $table->ipAddress('client_ip');
+            $table->integer('user_id')->nullable();
             $table->text('product_id');
             $table->string('page');
             $table->string('keyword');

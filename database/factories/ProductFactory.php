@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 class ProductFactory extends Factory
 {
@@ -14,6 +15,7 @@ class ProductFactory extends Factory
     public function definition()
     {
         return [
+            'product_uuid' => Str::uuid(),
             'name' => 'Product '.$this->faker->unique()->numerify("#####"),
             'condition' => $this->faker->randomElement(['N', 'SH']),
             'initial_price' => $this->faker->randomFloat(2),

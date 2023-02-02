@@ -19,7 +19,7 @@ class CreateReferencesTable extends Migration
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');
-            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });
 
         Schema::create('ref_city', function (Blueprint $table) {
@@ -29,7 +29,7 @@ class CreateReferencesTable extends Migration
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');
-            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('province_id')->constrained('ref_province')->onUpdate('cascade')->onDelete('cascade');
         });
@@ -40,7 +40,7 @@ class CreateReferencesTable extends Migration
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');
-            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('city_id')->constrained('ref_city')->onUpdate('cascade')->onDelete('cascade');
         });
@@ -51,7 +51,7 @@ class CreateReferencesTable extends Migration
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');
-            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });
 
         Schema::create('ref_delivery_service', function (Blueprint $table) {
@@ -61,7 +61,7 @@ class CreateReferencesTable extends Migration
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');
-            $table->timestampTz('updated_at', $precision = 0)->useCurrent()->useCurrentOnUpdate();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });
     }
 

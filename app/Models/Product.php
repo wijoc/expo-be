@@ -12,7 +12,7 @@ class Product extends Model
 
     protected $table = 'product';
     protected $primaryKey = 'id';
-    protected $fillable = ['name', 'condition', 'initial_price', 'net_price', 'disc_percent', 'disc_price', 'weight_g', 'min_purchase', 'store_id', 'category_id'];
+    protected $fillable = ['name', 'condition', 'initial_price', 'net_price', 'disc_percent', 'disc_price', 'weight_g', 'min_purchase', 'store_id', 'category_id', 'created_tz', 'created_at', 'updated_tz', 'updated_at'];
 
     public function store () {
         return $this->belongsTo('App\Models\Store', 'store_id', 'id');
@@ -20,6 +20,10 @@ class Product extends Model
 
     public function category () {
         return $this->belongsTo('App\Models\ProductCategory', 'category_id', 'id');
+    }
+
+    public function image () {
+        return $this->hasMany('App\Models\ProductImage', 'product_uuid', 'product_uuid');
     }
 
     protected function scopeFilter ($query, $filters) {
@@ -60,6 +64,7 @@ class Product extends Model
 
         return Product::select(
                         'product.id',
+                        'product.product_uuid',
                         'product.name as product_name',
                         'condition',
                         'initial_price',
@@ -70,20 +75,27 @@ class Product extends Model
                         'min_purchase',
                         'store_id',
                         'product.category_id',
+                        'product.created_at',
+                        'product.created_tz',
+                        'product.updated_at',
+                        'product.updated_tz',
                         'category.name as category_name',
                         'category.is_sub_category',
                         'category.parent_id as category_parent_id',
                         'category.parent_name as category_parent_name',
                         'ref_city.name as city_name',
                         'ref_city.ro_api_code as city_ro_code',
-                        'ref_province.name as province_name')
+                        'ref_province.name as province_name',
+                        'tz')
                     ->leftJoin('store', 'store.id', '=', 'product.store_id')
                     ->leftJoin('ref_city', 'store.city_id', '=', 'ref_city.id')
                     ->leftJoin('ref_province', 'store.province_id', '=', 'ref_province.id')
                     ->leftJoinSub($category, 'category', function ($join) {
                         $join->on('category.id', '=', 'product.category_id');
                     })
+                    ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
                     ->filter($filters)
+                    ->with('image')
                     ->get();
     }
 
@@ -95,6 +107,7 @@ class Product extends Model
 
         return Product::select(
                         'product.id',
+                        'product.product_uuid',
                         'product.name as product_name',
                         'condition',
                         'initial_price',
@@ -105,20 +118,47 @@ class Product extends Model
                         'min_purchase',
                         'store_id',
                         'product.category_id',
+                        'product.created_at',
+                        'product.created_tz',
+                        'product.updated_at',
+                        'product.updated_tz',
                         'category.name as category_name',
                         'category.is_sub_category',
                         'category.parent_id as category_parent_id',
                         'category.parent_name as category_parent_name',
                         'ref_city.name as city_name',
                         'ref_city.ro_api_code as city_ro_code',
-                        'ref_province.name as province_name')
+                        'ref_province.name as province_name',
+                        'tz')
                     ->leftJoin('store', 'store.id', '=', 'product.store_id')
                     ->leftJoin('ref_city', 'store.city_id', '=', 'ref_city.id')
                     ->leftJoin('ref_province', 'store.province_id', '=', 'ref_province.id')
                     ->leftJoinSub($category, 'category', function ($join) {
                         $join->on('category.id', '=', 'product.category_id');
                     })
-                    ->where('product.id', $id)
+                    ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
+
+                    /** Use this for PostgreSQL */
+                    ->whereRaw('CAST(product.id AS CHAR) = ?', [$id])
+                    ->orWhereRaw('CAST(product.product_uuid AS TEXT) = ?', [$id])
+
+                    /** Use this for MySQL */
+                    // ->where('product.id', $id)
+                    // ->orWhere('product.product_uuid', $id)
+
                     ->get();
+    }
+
+    public function checkProductStore ($id, $store) {
+        return Product::select('id', 'product_uuid')
+                ->where('store_id', $store)
+                /** Use this for PostgreSQL */
+                ->whereRaw('CAST(product.id AS CHAR) = ?', [$id])
+                ->orWhereRaw('CAST(product.product_uuid AS TEXT) = ?', [$id])
+
+                /** Use this for MySQL */
+                // ->where('product.id', $id)
+                // ->orWhere('product.product_uuid', $id)
+                ->get();
     }
 }

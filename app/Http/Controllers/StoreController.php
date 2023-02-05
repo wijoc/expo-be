@@ -16,6 +16,7 @@ use App\Models\KeywordLog;
 use App\Models\ShowStoreLog;
 use App\Models\StoreCategory;
 use App\Http\Resources\StoreResource;
+use GuzzleHttp\Psr7\Message;
 
 class StoreController extends Controller
 {
@@ -109,7 +110,7 @@ class StoreController extends Controller
         // Set Limit & Offset
         if ($request->page !== 'all') {
             $filters['page'] = $request->page;
-            $filters['limit'] = 100;
+            $filters['limit'] = ($request->per_page && $request->per_page > 0 ? $request->per_page : 30);
             if ($request->page > 1) $filters['offset'] = $request->page - 1 * $filters['limit'];
         }
 
@@ -183,7 +184,9 @@ class StoreController extends Controller
                     if ($value['product_id'] && $value['product_id'] !== '') {
                         $prd = array(
                             'id' => $value['product_id'],
+                            'uuid' => $value['product_uuid'],
                             'name' => $value['product_name'],
+                            'price' => $value['net_price'],
                             'store_id' => $value['store_id']
                         );
                         $prods = $data[$value['store_id']]['products'];
@@ -255,19 +258,20 @@ class StoreController extends Controller
 
             return response()->json([
                 'success' => true,
+                'message' => 'Data Found',
                 'search' => $request->search,
                 'sort_by' => $request->sort,
                 'sort_order' => $filters['order'],
                 'page' => $request->page,
+                'row_per_page' => $filters['limit'],
                 'count_data' => count($storesData),
                 'count_all' => $this->storeModel->countAll($filters)->first()['count_all'],
                 'data' => StoreResource::collection($storesData)
-                // 'data' => $data
             ], 200);
         } else {
             return response()->json([
                 'success' => false,
-                'message' => 'No data available!'
+                'message' => 'No data available'
             ], 200);
         }
     }

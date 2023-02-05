@@ -69,7 +69,6 @@ use App\Http\Controllers\StoreCategoryController;
         Route::delete('/products/{id}', 'destroy');
         Route::post('/products/add-image/{id}', 'addImage');
         Route::delete('/products/delete-image/{id}', 'deleteImage');
-        Route::get('/products/delete-image/{id}', 'test');
     });
 
   // Category Protected Routes

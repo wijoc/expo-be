@@ -19,6 +19,7 @@ class StoreResource extends JsonResource
         // return parent::toArray($request);
         $array = [
             'id' => $this->store_id,
+            'domain' => $this->domain,
             'store_name' => $this->store_name,
             'email' => $this->email,
             'phone' => $this->phone,
@@ -34,10 +35,10 @@ class StoreResource extends JsonResource
         ];
 
         if ($this->created_tz !== 'SYSTEM') {
-            $array['created_at'] = Carbon::parse($this->created_at)->format('c');
+            $array['registered_at'] = Carbon::parse($this->created_at)->format('c');
         } else {
             $createdTimezone = $this->created_tz !== 'SYSTEM' ? $this->created_tz : $this->tz;
-            $array['created_at'] = TimeHelp::convertTz($this->created_at, $createdTimezone, 'UTC');
+            $array['registered_at'] = TimeHelp::convertTz($this->created_at, $createdTimezone, 'UTC');
         }
 
         if ($this->updated_tz !== 'SYSTEM') {

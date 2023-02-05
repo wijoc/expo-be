@@ -95,7 +95,7 @@ class Store extends Model
        * Not yet test the query in another type database */
 
         /** If you're using PostgreSQL, USE THIS QUERY */
-        return Store::select('store.id as store_id', 'store.*', 'product.id as product_id', 'product.name as product_name', 'product.store_id as product_store', 'tz')
+        return Store::select('store.id as store_id', 'store.*', 'product.id as product_id', 'product.product_uuid', 'product.name as product_name', 'product.net_price', 'product.store_id as product_store', 'tz')
                 ->leftJoin('product', 'product.store_id', '=', 'store.id')
                 ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
                 ->whereIn('product.id', function ($query) {

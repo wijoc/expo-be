@@ -59,9 +59,9 @@ class Store extends Model
         if ($filter['page'] !== 'all') {
             // if ($filter['sort'] || !isset($filter['where_not_in']) || empty($filter['where_not_in'])) {
             if (!$filter['sort'] && isset($filter['where_not_in']) && !empty($filter['where_not_in'])) {
-                $query->whereNotIn('id', $filter['where_not_in']);
+                $query->whereNotIn('store.id', $filter['where_not_in']);
             } else if (!$filter['sort'] && isset($filter['where_in']) && !empty($filter['where_in']) ) {
-                $query->whereIn('id', $filter['where_in']);
+                $query->whereIn('store.id', $filter['where_in']);
             }
 
             $query->when($filter['limit'] ?? false, function ($query, $limit) {

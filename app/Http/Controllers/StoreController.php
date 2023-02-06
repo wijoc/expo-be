@@ -136,6 +136,19 @@ class StoreController extends Controller
 
                 if ($pageData && count($pageData) > 0) {
                     $filters['where_in'] = explode(',', $pageData[0]->store_id);
+                    if (count($filters['where_in']) < $request->per_page) {
+                        $filters['where_in'] = false;
+                        $prevData = $this->storeLogModel->previousLog($filters);
+                        $notIn = [];
+
+                        if ($prevData && count($prevData) > 0){
+                            foreach($prevData as $key => $value) {
+                                $notIn = array_merge($notIn, explode(',', $value['store_id']));
+                            }
+
+                            $filters['where_not_in'] = $notIn;
+                        }
+                    }
                 }
                 if ($request->page > 1 && !$pageData || count($pageData) <= 0) {
                     $prevData = $this->storeLogModel->previousLog($filters);
@@ -261,7 +274,7 @@ class StoreController extends Controller
                 'message' => 'Data Found',
                 'search' => $request->search,
                 'sort_by' => $request->sort,
-                'sort_order' => $filters['order'],
+                'sort_order' =>$request->order,
                 'page' => $request->page,
                 'row_per_page' => $filters['limit'],
                 'count_data' => count($storesData),

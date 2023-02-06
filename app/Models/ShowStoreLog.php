@@ -39,7 +39,11 @@ class ShowStoreLog extends Model
 
     public function previousLog ($filters) {
         return ShowStoreLog::when($filters['page'] ?? false, function ($query, $page) {
-                                if ($page !== 'all' && $page > 1) { $query->where('page', '<', $page); }
+                                if ($page !== 'all' && $page > 1) {
+                                    $query->where('page', '<', $page);
+                                } else if ($page !== 'all' && $page == 1){
+                                    $query->where('page', '<>', $page);
+                                }
                             })
                             ->where('keyword', $filters['search'])
                             // ->where('updated_at', '>', $filters['timelimit'])

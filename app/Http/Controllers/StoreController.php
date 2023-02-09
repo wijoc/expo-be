@@ -284,7 +284,15 @@ class StoreController extends Controller
         } else {
             return response()->json([
                 'success' => false,
-                'message' => 'No data available'
+                'message' => 'No data available',
+                'search' => $request->search,
+                'sort_by' => $request->sort,
+                'sort_order' =>$request->order,
+                'page' => $request->page,
+                'row_per_page' => $filters['limit'],
+                'count_data' => count($storesData),
+                'count_all' => $this->storeModel->countAll($filters)->first()['count_all'],
+                'data' => null
             ], 200);
         }
     }
@@ -378,20 +386,22 @@ class StoreController extends Controller
     {
         if ($slug) {
             $store = $this->storeModel->findStore($slug)[0];
-            if ($request->with_product) {
+            if ($request->with_product && $request->with_product !== 'false') {
                 $store['products'] = ProductResource::collection($this->productModel->getProducts(['store'], $store->store_id));
             }
 
             if ($store) {
                 return response()->json([
                     'success' => true,
+                    'message' => 'Data found',
+                    'wp' => $request->with_product,
                     'data' => StoreResource::make($store)
                 ], 200);
             } else {
                 return response()->json([
                     'success' => false,
                     'message' => 'Data with ID = '.$slug.' or domain = '.$slug.' not found!'
-                ], 200);
+                ], 404);
             }
         } else {
             return response()->json([
@@ -541,22 +551,40 @@ class StoreController extends Controller
         }
     }
 
-    public function productInStore(Request $request, $id) {
-        $request->merge(['store' => $id]);
-        $products = $this->productModel->getProducts($request);
+    public function productInStore(Request $request, $slug) {
+        if ($slug) {
+            $store = $this->storeModel->findStore($slug);
+            if ($store && count($store) > 0) {
+                $request->merge(['store' => $store[0]['id']]);
+                $products = $this->productModel->getProducts($request);
 
-        if ($products && count($products) > 0) {
-            return response()->json([
-                'success' => true,
-                'count_data' => count($products),
-                'count_all' => $this->productModel->countAll($request)[0]->count_all,
-                'data' => ProductResource::collection($products)
-            ], 200);
+                if ($products && count($products) > 0) {
+                    return response()->json([
+                        'success' => true,
+                        'count_data' => count($products),
+                        'count_all' => $this->productModel->countAll($request)[0]->count_all,
+                        'data' => ProductResource::collection($products)
+                    ], 200);
+                } else {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'No product data faund',
+                        'count_data' => count($products),
+                        'count_all' => $this->productModel->countAll($request)[0]->count_all,
+                        'data' => null
+                    ], 200);
+                }
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Store not found'
+                ], 404);
+            }
         } else {
             return response()->json([
                 'success' => false,
-                'message' => 'Data not found'
-            ], 200);
+                'message' => 'Please provide path parameter (ID or store domain)!'
+            ], 400);
         }
     }
 

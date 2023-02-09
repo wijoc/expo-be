@@ -22,8 +22,10 @@ class ProductCategory extends Model
             $query->where('name', 'LIKE', '%'.$search.'%');
         });
 
-        $query->when($filter['parentID'] ?? false, function ($query, $parent) {
-            $query->where('parent_id', $parent);
+        $query->when($filter['parent'] ?? false, function ($query, $parent) {
+            if (is_numeric($parent)) {
+                $query->where('parent_id', $parent);
+            }
         });
     }
 

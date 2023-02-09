@@ -9,7 +9,7 @@ use App\Models\ProductCategory;
 class ProductCategoryController extends Controller
 {
     public function __construct () {
-        $this->category = new ProductCategory();
+        $this->categoryModel = new ProductCategory();
         $this->rules = [
             'name' => 'required|max:50|unique:App\Models\ProductCategory',
             'is_sub_category' => 'required|boolean',
@@ -27,7 +27,7 @@ class ProductCategoryController extends Controller
 
     public function index(Request $request)
     {
-        $rawData = $this->category->getCategories($request);
+        $rawData = $this->categoryModel->getCategories($request);
 
         if ($rawData && count($rawData) > 0) {
             $categories = [];
@@ -135,7 +135,7 @@ class ProductCategoryController extends Controller
     {
         if ($id) {
             if (is_numeric($id)) {
-                $category = $this->category->findCategory($id);
+                $category = $this->categoryModel->findCategory($id);
                 $data = [
                     'id' => $category[0]['id'],
                     'name' => $category[0]['name'],

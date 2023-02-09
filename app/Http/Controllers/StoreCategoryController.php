@@ -9,7 +9,7 @@ use App\Models\StoreCategory;
 class StoreCategoryController extends Controller
 {
     public function __construct () {
-        $this->category = new StoreCategory();
+        $this->categoryModel = new StoreCategory();
         $this->rules = [
             'name' => 'required|max:50|unique:App\Models\StoreCategory'
         ];
@@ -22,7 +22,7 @@ class StoreCategoryController extends Controller
 
     public function index(Request $request)
     {
-        $rawData = $this->category->getCategories($request);
+        $rawData = $this->categoryModel->getCategories($request);
 
         if ($rawData && count($rawData) > 0) {
             $categories = [];

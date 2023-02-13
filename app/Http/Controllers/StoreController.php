@@ -86,9 +86,6 @@ class StoreController extends Controller
             //     $filters['order'] = $request->order ?? 'ASC';
             //     $filters['sort'] = 'popularity_poin';
             //     break;
-            // case "price":
-            //     $filters['sort'] = 'net_price';
-            //     break;
             case "name":
                 $filters['order'] = $request->order ?? 'ASC';
                 $filters['sort'] = 'store_name';

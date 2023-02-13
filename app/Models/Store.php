@@ -47,8 +47,8 @@ class Store extends Model
     }
 
     public function scopeSorting ($query, $sort) {
-        $query->when($sort['sort'], function ($query, $sort) {
-            $query->orderBy($sort, $sort['order'] ?? 'ASC');
+        $query->when($sort['sort'], function ($query, $s) use ($sort) {
+            $query->orderBy($s, $sort['order']);
         }, function ($query) {
             // $query->orderByRaw('RAND() ASC'); // For MySQL
             $query->orderByRaw('RANDOM() ASC'); // For Postgres

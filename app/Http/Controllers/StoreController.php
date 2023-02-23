@@ -20,6 +20,13 @@ use GuzzleHttp\Psr7\Message;
 
 class StoreController extends Controller
 {
+    protected $storeModel;
+    protected $productModel;
+    protected $storeLogModel;
+    protected $keywordLogModel;
+    protected $rules;
+    protected $messages;
+
     public function __construct()
     {
         $this->storeModel = new Store();
@@ -163,18 +170,54 @@ class StoreController extends Controller
         }
 
         // Log Client keyword
-        if ($request->search) {
-            KeywordLog::upsert([
-                'client_ip' => $filters['client_ip'],
-                'user_id' => auth()->guard('api')->user()->id ?? NULL,
-                'keyword' => $request->search,
-                'created_at' => now(),
-                'created_tz' => date_default_timezone_get(),
-                'updated_at' => now(),
-                'updated_tz' => date_default_timezone_get()
-            ], ['client_ip', 'user_id', 'keyword'], ['updated_at', 'updated_tz']);
-        }
 
+        if ($request->search) {
+            /** Update client Keyword log IF YOU USING POSTGRESQL READ THIS !
+             * Since non of field ['client_ip', 'user_id', 'keyword'] is unique
+             * and sometime value is NULL, upsert not working for postgreSQL (maybe i don't know how)
+             * so here this will check if row-data exist, and determine whether to insert or update.
+             *
+             * IF YOU USING MySQL / MairaDB, i think upsert will do just fine.
+             */
+
+            /** Upsert Syntax */
+                // KeywordLog::upsert([
+                //     'client_ip' => $filters['client_ip'],
+                //     'user_id' => auth()->guard('api')->user()->id ?? NULL,
+                //     'keyword' => $request->search,
+                //     'created_at' => now(),
+                //     'created_tz' => date_default_timezone_get(),
+                //     'updated_at' => now(),
+                //     'updated_tz' => date_default_timezone_get()
+                // ], ['client_ip', 'user_id', 'keyword'], ['updated_at', 'updated_tz']);
+
+
+            $check = $this->storeLogModel->thisPageLog([
+                'client_ip' => $filters['client_ip'] ?? null,
+                'user_id' => auth()->guard('api')->user() ? auth()->guard('api')->user()->id : NULL,
+                'page' => $request->page,
+                'search' => $request->search ?? null,
+                'timelimit' => false
+            ])->first();
+
+
+            if ($check) {
+                KeywordLog::where('id', $check['id'])->update([
+                    'updated_at' => now(),
+                    'updated_tz' => date_default_timezone_get()
+                ]);
+            } else {
+                KeywordLog::insert([
+                    'client_ip' => $filters['client_ip'] ?? null,
+                    'user_id' => auth()->guard('api')->user() ? auth()->guard('api')->user()->id : NULL,
+                    'keyword' => $request->search,
+                    'created_at' => now(),
+                    'created_tz' => date_default_timezone_get(),
+                    'updated_at' => now(),
+                    'updated_tz' => date_default_timezone_get()
+                ]);
+            }
+        }
         // Get Store Data
         if ($request->with_product) {
             $storesData = $this->storeModel->getStores($filters);
@@ -225,6 +268,19 @@ class StoreController extends Controller
                  * IF YOU USING MySQL / MairaDB, i think upsert will do just fine.
                  */
 
+                /** Upsert */
+                    // ShowStoreLog::upsert([
+                    //     'client_ip' => $filters['client_ip'] ?? null,
+                    //     'user_id' => auth()->guard('api')->user() ? auth()->guard('api')->user()->id : NULL,
+                    //     'page' => $request->page,
+                    //     'keyword' => $request->search ?? null,
+                    //     'store_id' => $storeID,
+                    //     'created_at' => now(),
+                    //     'created_tz' => date_default_timezone_get(),
+                    //     'updated_at' => now(),
+                    //     'updated_tz' => date_default_timezone_get()
+                    // ], ['client_ip', 'user_id', 'page', 'keyword'], ['store_id', 'updated_at', 'updated_tz']);
+
                 $check = $this->storeLogModel->thisPageLog([
                     'client_ip' => $filters['client_ip'] ?? null,
                     'user_id' => auth()->guard('api')->user() ? auth()->guard('api')->user()->id : NULL,
@@ -232,18 +288,6 @@ class StoreController extends Controller
                     'search' => $request->search ?? null,
                     'timelimit' => false
                 ])->first();
-
-                // ShowStoreLog::upsert([
-                //     'client_ip' => $filters['client_ip'] ?? null,
-                //     'user_id' => auth()->guard('api')->user() ? auth()->guard('api')->user()->id : NULL,
-                //     'page' => $request->page,
-                //     'keyword' => $request->search ?? null,
-                //     'store_id' => $storeID,
-                //     'created_at' => now(),
-                //     'created_tz' => date_default_timezone_get(),
-                //     'updated_at' => now(),
-                //     'updated_tz' => date_default_timezone_get()
-                // ], ['client_ip', 'user_id', 'page', 'keyword'], ['store_id', 'updated_at', 'updated_tz']);
 
                 if ($check) {
                     ShowStoreLog::where('id', $check['id'])->update([

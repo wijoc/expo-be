@@ -7,6 +7,9 @@ use App\Http\Controllers\StoreController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\StoreCategoryController;
+use App\Http\Controllers\ProvinceController;
+use App\Http\Controllers\CityController;
+use App\Http\Controllers\DistrictController;
 
 /*
 |--------------------------------------------------------------------------
@@ -42,6 +45,11 @@ use App\Http\Controllers\StoreCategoryController;
         // Categories Routes
         Route::get('/categories/product', [ProductCategoryController::class, 'index']);
         Route::get('/categories/store', [StoreCategoryController::class, 'index']);
+
+        // Region Routes
+        Route::get('/provinces', [ProvinceController::class, 'index']);
+        Route::get('/cities', [CityController::class, 'index']);
+        Route::get('/districts', [DistrictController::class, 'index']);
     });
 
 /** Protected Route */

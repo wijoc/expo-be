@@ -32,6 +32,8 @@ class ProductResource extends JsonResource
             'weight_in_gram' => $this->weight_g,
             'minimal_purchase' => $this->min_purchase,
             'store_id' => $this->store_id,
+            'store_name' => $this->store_name,
+            'store_domain' => $this->domain,
             'category_id' => $this->category_id,
             'category_name' => $this->category_name,
             'is_sub_category' => ($this->is_sub_category === 0? false : true),

@@ -82,6 +82,11 @@ class StoreController extends Controller
         $filters['client_ip'] = $_SERVER['REMOTE_ADDR'] ?? $request->ip();
         $filters['user_id'] = auth()->guard('api')->user()->id ?? null;
         $filters['search'] = $request->search ?? null;
+        if ($request->city && count($request->city) > 0) {
+            $filters['city'] = $request->city;
+        } else {
+            $filters['city'] = false;
+        }
 
         // Set Sorting
         switch ($request->sort) {
@@ -170,7 +175,6 @@ class StoreController extends Controller
         }
 
         // Log Client keyword
-
         if ($request->search) {
             /** Update client Keyword log IF YOU USING POSTGRESQL READ THIS !
              * Since non of field ['client_ip', 'user_id', 'keyword'] is unique

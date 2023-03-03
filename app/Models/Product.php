@@ -86,6 +86,8 @@ class Product extends Model
                         'ref_city.name as city_name',
                         'ref_city.ro_api_code as city_ro_code',
                         'ref_province.name as province_name',
+                        'store.store_name',
+                        'store.domain',
                         'tz')
                     ->leftJoin('store', 'store.id', '=', 'product.store_id')
                     ->leftJoin('ref_city', 'store.city_id', '=', 'ref_city.id')
@@ -129,6 +131,8 @@ class Product extends Model
                         'ref_city.name as city_name',
                         'ref_city.ro_api_code as city_ro_code',
                         'ref_province.name as province_name',
+                        'store.store_name',
+                        'store.domain',
                         'tz')
                     ->leftJoin('store', 'store.id', '=', 'product.store_id')
                     ->leftJoin('ref_city', 'store.city_id', '=', 'ref_city.id')

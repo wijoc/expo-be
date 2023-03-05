@@ -17,6 +17,12 @@ use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
+    protected $productModel;
+    protected $productLogModel;
+    protected $keywordLogModel;
+    protected $rules;
+    protected $messages;
+
     public function __construct(){
         $this->productModel = new Product();
         $this->productLogModel = new ShowProductLog();
@@ -92,7 +98,7 @@ class ProductController extends Controller
         // Set Paginate
         if ($request->page !== 'all') {
             $filters['page'] = $request->page;
-            $filters['limit'] = 100;
+            $filters['limit'] = ($request->per_page && $request->per_page > 0 ? $request->per_page : 100);
             if ($request->page > 1) $filters['offset'] = $request->page - 1 * $filters['limit'];
         }
 
@@ -517,5 +523,42 @@ class ProductController extends Controller
             ], 400);
         }
 
+    }
+
+    public function similar (Request $request, $id) {
+        if ($id) {
+            $product = $this->productModel->findProduct($id)->first();
+
+            if ($product) {
+                $arrName = preg_split('/\s+/', preg_replace('/[\-!@^-_=|;\\\\&\/#,\s\s+()$~%.\'":*?<>{}\[\]]/', ' ', $product->product_name), -1);
+                $similar = $this->productModel->similarProduct($arrName, [0 => $product->category_id]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => ($similar && count($similar) > 0 ? 'Data found' : 'No data available'),
+                    'sort_by' => $request->sort ?? null,
+                    'sort_order' => $request->order ?? null,
+                    'page' => 'all',
+                    'count_data' => $similar ? count($similar) : null,
+                    'count_all' => $this->productModel->countAllSimilar($arrName, [0 => $product->category_id])[0]->count_all,
+                    'data' => $similar ? ProductResource::collection($similar) : null
+                ], 200);
+            } else {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Data with ID / UUID = '.$id.' not found!'
+                ], 404);
+            }
+        } else {
+            return response()->json([
+                'error' => true,
+                'message' => 'Please provide path parameter ID!'
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $id
+        ], 200);
     }
 }

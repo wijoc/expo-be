@@ -41,6 +41,7 @@ use App\Http\Controllers\DistrictController;
         // Product Routes
         Route::get('/products', [ProductController::class, 'index']);
         Route::get('/products/{product}', [ProductController::class, 'show']);
+        Route::get('/products/similar/{product}', [ProductController::class, 'similar']);
 
         // Categories Routes
         Route::get('/categories/product', [ProductCategoryController::class, 'index']);

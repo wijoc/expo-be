@@ -12,7 +12,7 @@ class Product extends Model
 
     protected $table = 'product';
     protected $primaryKey = 'id';
-    protected $fillable = ['name', 'condition', 'initial_price', 'net_price', 'disc_percent', 'disc_price', 'weight_g', 'min_purchase', 'store_id', 'category_id', 'created_tz', 'created_at', 'updated_tz', 'updated_at'];
+    protected $fillable = ['product_uuid', 'name', 'condition', 'initial_price', 'net_price', 'disc_percent', 'disc_price', 'weight_g', 'min_purchase', 'store_id', 'category_id', 'created_tz', 'created_at', 'updated_tz', 'updated_at'];
 
     public function store () {
         return $this->belongsTo('App\Models\Store', 'store_id', 'id');
@@ -24,6 +24,10 @@ class Product extends Model
 
     public function image () {
         return $this->hasMany('App\Models\ProductImage', 'product_uuid', 'product_uuid');
+    }
+
+    public function cart () {
+        return $this->hasMany('App\Models\Cart', 'product_uuid', 'product_uuid');
     }
 
     protected function scopeFilter ($query, $filters) {

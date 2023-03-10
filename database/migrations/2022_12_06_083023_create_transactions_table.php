@@ -13,18 +13,6 @@ class CreateTransactionsTable extends Migration
      */
     public function up()
     {
-        Schema::create('cart', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedInteger('product_id');
-            $table->unsignedInteger('qty');
-            $table->string('created_tz')->default('SYSTEM');
-            $table->timestamp('created_at')->useCurrent();
-            $table->string('updated_tz')->default('SYSTEM');
-            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
-
-            $table->foreignId('user_id')->constrained('tb_user')->onUpdate('cascade')->onDelete('cascade');
-        });
-
         Schema::create('transaction', function (Blueprint $table) {
             $table->id();
             $table->string('transaction_code', 50);

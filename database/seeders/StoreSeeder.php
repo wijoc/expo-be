@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Store;
+use App\Models\StoreDelivery;
 
 class StoreSeeder extends Seeder
 {
@@ -15,5 +16,7 @@ class StoreSeeder extends Seeder
     public function run()
     {
         Store::factory()->count(20)->create();
+
+        StoreDelivery::factory()->count(20)->create();
     }
 }

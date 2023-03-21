@@ -54,7 +54,7 @@ class CreateReferencesTable extends Migration
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });
 
-        Schema::create('ref_delivery_service', function (Blueprint $table) {
+        Schema::create('ref_delivery_courier', function (Blueprint $table) {
             $table->id();
             $table->string('name', 50);
             $table->string('ro_api_param', 50);
@@ -76,6 +76,6 @@ class CreateReferencesTable extends Migration
         Schema::dropIfExists('ref_city');
         Schema::dropIfExists('ref_district');
         Schema::dropIfExists('ref_ecommerce');
-        Schema::dropIfExists('ref_delivery_service');
+        Schema::dropIfExists('ref_delivery_courier');
     }
 }

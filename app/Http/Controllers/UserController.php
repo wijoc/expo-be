@@ -8,25 +8,36 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
+use App\Models\City;
+use App\Models\District;
 use App\Models\User;
+use App\Models\UserAddress;
 use App\Http\Resources\UserResource;
 
 class UserController extends Controller
 {
+    protected $userModel;
+    protected $addressModel;
+    protected $cityModel;
+    protected $districtModel;
+
     public function __construct() {
-        $this->users = new User();
+        $this->userModel = new User();
+        $this->addressModel = new UserAddress();
+        $this->cityModel = new City();
+        $this->districtModel = new District();
     }
 
     public function index()
     {
-        $users = $this->users->getUsers();
+        $users = $this->userModel->getUsers();
 
         if ($users) {
             return response()->json([
                 'success' => true,
                 'error' => false,
                 'count_data' => UserResource::collection($users)->count(),
-                'count_all' => $this->users->countAll()[0]->count_all,
+                'count_all' => $this->userModel->countAll()[0]->count_all,
                 'data' => UserResource::collection($users)
             ]);
         } else {
@@ -264,5 +275,90 @@ class UserController extends Controller
             'success' => true,
             'data' => UserResource::make(auth()->guard('api')->user())
         ], 200);
+    }
+
+    public function storeAddress (Request $request) {
+        $validator = Validator::make($request->all(),
+            [
+                'recipient_name' => 'required|max:50',
+                'province' => 'required|numeric|exists:App\Models\Province,id',
+                'city' => 'required|numeric|exists:App\Models\City,id',
+                'district' => 'required|numeric|exists:App\Models\District,id',
+                'full_address' => 'required|max:200',
+                'postal' => 'required',
+                'note' => 'max:200'
+            ],
+            [
+                'recipient_name.requried' => 'Recipient\'s Name is required',
+                'recipient_name.max' => 'Recipient\'s Name can not be more than 50 character',
+                'province.required' => 'Province is required',
+                'province.numeric' => 'Value must be numeric',
+                'province.exists' => 'Province with requested ID not found',
+                'city.required' => 'City is required',
+                'city.numeric' => 'Value must be numeric',
+                'city.exists' => 'City with requested ID not found',
+                'district.required' => 'Distrcit is required',
+                'district.numeric' => 'Value must be numeric',
+                'district.exists' => 'Distrcit with requested ID not found',
+                'full_address.required' => 'Full address is required',
+                'full_address.max' => 'Full address can not be more than 200 character',
+                'postal.required' => 'Postal code is required',
+                'note.max' => 'Note can not be more than 200 character'
+            ]
+        );
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The given data was invalid',
+                'errors' => $validator->errors()
+            ], 400);
+        } else {
+            $validateCity = $this->cityModel->checkCity($validator->validated()['city'], $validator->validated()['province'])->count();
+            $validateDistrict = $this->districtModel->checkDistrict($validator->validated()['district'], $validator->validated()['city'])->count();
+
+            if ($validateCity < 1 || $validateDistrict < 1) {
+                $validateCity < 1 ? $errors['city'][] = "City not in the selected province" : '';
+                $validateDistrict < 1 ? $errors['district'][] = "District not in the selected city" : '';
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The given data was invalid',
+                    'errors' => $errors
+                ], 400);
+            } else {
+                $address = $this->addressModel->getAllAddress(auth()->guard('api')->user()->id)->count();
+
+                $inputData = [
+                    'user_id' => auth()->guard('api')->user()->id,
+                    'recipient_name' => $validator->validated()['recipient_name'],
+                    'province_id' => $validator->validated()['province'],
+                    'city_id' => $validator->validated()['city'],
+                    'district_id' => $validator->validated()['district'],
+                    'full_address' => $validator->validated()['full_address'],
+                    'postal_code' => $validator->validated()['postal'],
+                    'status' => $address > 0 ? 'D' : 'A',
+                    'note' => $validator->validated()['note'],
+                    'created_at' => now(),
+                    'created_tz' => date_default_timezone_get(),
+                    'updated_at' => now(),
+                    'updated_tz' => date_default_timezone_get()
+                ];
+
+                $inputAddress = $this->addressModel->insertAddress($inputData);
+
+                if ($inputAddress) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Success adding new address'
+                    ], 201);
+                } else {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Failed adding new address'
+                    ], 500);
+                }
+            }
+        }
     }
 }

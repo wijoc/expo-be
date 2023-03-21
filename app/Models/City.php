@@ -52,4 +52,8 @@ class City extends Model
     public function countAll ($filters = null) {
         return City::selectRaw('COUNT(id) as count_all')->filter($filters)->get();
     }
+
+    public function checkCity (Int $id, Int $province) {
+        return City::where('id', $id)->where('province_id', $province)->get();
+    }
 }

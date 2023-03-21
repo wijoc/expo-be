@@ -77,7 +77,7 @@ class CreateExhibitionsTable extends Migration
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('store_id')->constrained('store')->onUpdate('cascade')->onDelete('cascade');
-            $table->foreignId('delivery_service_id')->constrained('ref_delivery_service')->onUpdate('cascade')->onDelete('cascade');
+            $table->foreignId('delivery_courier_id')->constrained('ref_delivery_courier')->onUpdate('cascade')->onDelete('cascade');
         });
 
         Schema::create('product', function (Blueprint $table) {

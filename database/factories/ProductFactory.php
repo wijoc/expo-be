@@ -22,8 +22,8 @@ class ProductFactory extends Factory
             'net_price' => $this->faker->randomFloat(2),
             'disc_percent' => $this->faker->randomFloat(2, 0, 99),
             'disc_price' => $this->faker->randomFloat(2),
-            'weight_g' => $this->faker->randomNumber(),
-            'min_purchase' => $this->faker->randomNumber(),
+            'weight_g' => $this->faker->numberBetween(1, 2000),
+            'min_purchase' => $this->faker->numberBetween(1, 10),
             'store_id' => $this->faker->numberBetween(1, 4),
             'category_id' => $this->faker->numberBetween(1, 3)
         ];

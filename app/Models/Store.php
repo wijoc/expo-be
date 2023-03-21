@@ -14,6 +14,10 @@ class Store extends Model
     protected $primaryKey = 'id';
     protected $fillable = ['store_name', 'domain', 'email', 'phone', 'whatsapp', 'image_path', 'image_mime', 'description', 'full_address', 'user_id', 'district_id', 'city_id', 'province_id'];
 
+    public function storeuser () {
+        return $this->belongsTo('App\Models\User', 'id', 'user_id');
+    }
+
     public function district () {
         return $this->belongsTo('App\Models\District', 'district_id', 'id');
     }
@@ -27,7 +31,11 @@ class Store extends Model
     }
 
     public function product () {
-        return $this->hasMany('App\Models\Product', 'store_id', 'id');
+        return $this->hasMany('App\Models\Product', 'id', 'store_id');
+    }
+
+    public function delivery () {
+        return $this->hasMany('App\Models\StoreDelivery', 'id', 'store_id');
     }
 
     public function scopeFilter ($query, $filter) {
@@ -95,7 +103,15 @@ class Store extends Model
        * Not yet test the query in another type database */
 
         /** If you're using PostgreSQL, USE THIS QUERY */
-        return Store::select('store.id as store_id', 'store.*', 'product.id as product_id', 'product.product_uuid', 'product.name as product_name', 'product.net_price', 'product.store_id as product_store', 'tz')
+        return Store::select(
+                        'store.id as store_id',
+                        'store.*',
+                        'product.id as product_id',
+                        'product.product_uuid',
+                        'product.name as product_name',
+                        'product.net_price',
+                        'product.store_id as product_store',
+                        'tz')
                 ->leftJoin('product', 'product.store_id', '=', 'store.id')
                 ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
                 ->whereIn('product.id', function ($query) {

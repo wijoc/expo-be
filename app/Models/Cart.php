@@ -21,20 +21,42 @@ class Cart extends Model
         return $this->belongsTo('App\Models\Product', 'product_uuid', 'product_uuid');
     }
 
-    public function user () {
+    public function cartuser () {
         return $this->belongsTo('App\Models\User', 'id', 'user_id');
     }
 
-    public function getCart (Int $user) {
+    public function getCart (Int $user, Array $filter = []) {
         return Cart::selectRaw('cart.id,
                                 cart.*,
                                 product.name,
+                                product.initial_price,
                                 product.net_price,
+                                product.disc_percent,
+                                product.disc_price,
+                                product.weight_g,
                                 store.store_name,
                                 store.domain')
                     ->leftJoin('product', 'product.product_uuid', '=', 'cart.product_uuid')
                     ->leftJoin('store', 'store.id', '=', 'cart.store_id')
                     ->where('cart.user_id', $user)
+                    ->get();
+    }
+
+    public function selectCarts (Int $user, Array $whereIn) {
+        return Cart::selectRaw('cart.id,
+                                cart.*,
+                                product.name,
+                                product.initial_price,
+                                product.net_price,
+                                product.disc_percent,
+                                product.disc_price,
+                                product.weight_g,
+                                store.store_name,
+                                store.domain')
+                    ->leftJoin('product', 'product.product_uuid', '=', 'cart.product_uuid')
+                    ->leftJoin('store', 'store.id', '=', 'cart.store_id')
+                    ->where('cart.user_id', $user)
+                    ->whereIn('cart.id', $whereIn)
                     ->get();
     }
 
@@ -46,5 +68,9 @@ class Cart extends Model
 
     public function checkCart (Int $id, Int $user) {
         return Cart::where('id', $id)->where('user_id', $user)->get();
+    }
+
+    public function deleteCart ($ids) {
+        return Cart::whereIn('id', $ids)->delete();
     }
 }

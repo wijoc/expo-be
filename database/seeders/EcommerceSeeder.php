@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Ecommerce;
-use App\Models\DeliveryService;
+use App\Models\DeliveryCourier;
 
 class EcommerceSeeder extends Seeder
 {
@@ -15,7 +15,7 @@ class EcommerceSeeder extends Seeder
      */
     public function run()
     {
-        Ecommerce::create(
+        Ecommerce::insert([
             [
                 'name' => 'Blibli'
             ],
@@ -34,9 +34,9 @@ class EcommerceSeeder extends Seeder
             [
                 'name' => 'Tokopedia'
             ]
-        );
+        ]);
 
-        DeliveryService::insert(
+        DeliveryCourier::insert([
             [
                 'name' => 'JNE',
                 'ro_api_param' => 'jne'
@@ -49,6 +49,6 @@ class EcommerceSeeder extends Seeder
                 'name' => 'TIKI',
                 'ro_api_param' => 'tiki'
             ]
-        );
+        ]);
     }
 }

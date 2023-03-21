@@ -149,7 +149,7 @@ class ProductCategoryController extends Controller
                         'success' => true,
                         'message' => 'Data found',
                         'data' => $data
-                    ], 404);
+                    ], 200);
                 } else {
                     return response()->json([
                         'error' => true,

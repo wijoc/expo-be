@@ -234,4 +234,16 @@ return [
 
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Third Party API Key
+    |--------------------------------------------------------------------------
+    |
+    | This variable store encrypted api key for third party API
+    | currently uses API = RajaOngkir
+    |
+    */
+
+    'ro_key' => env('RO_API_KEY')
+
 ];

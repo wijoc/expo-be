@@ -16,4 +16,8 @@ class District extends Model
     public function city() {
         return $this->belongsTo('App/Models/City', 'city_id', 'id');
     }
+
+    public function checkDistrict (Int $id, Int $city) {
+        return District::where('id', $id)->where('city_id', $city)->get();
+    }
 }

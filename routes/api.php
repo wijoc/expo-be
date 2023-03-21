@@ -11,6 +11,8 @@ use App\Http\Controllers\ProvinceController;
 use App\Http\Controllers\CityController;
 use App\Http\Controllers\DistrictController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\DeliveryController;
 use GuzzleHttp\Middleware;
 
 /*
@@ -53,6 +55,10 @@ use GuzzleHttp\Middleware;
     Route::get('/provinces', [ProvinceController::class, 'index']);
     Route::get('/cities', [CityController::class, 'index']);
     Route::get('/districts', [DistrictController::class, 'index']);
+
+    // Delivery Service Routes
+    Route::get('/delivery-services', [DeliveryController::class, 'index']);
+    Route::get('/delivery-services/{id}', [DeliveryController::class, 'show']);
   });
 
 /** Protected Route */
@@ -62,6 +68,7 @@ use GuzzleHttp\Middleware;
       Route::post('/users', 'store')->middleware('jauth:su|admin');
       Route::get('/my-profile', 'userProfile')->middleware('jauth');
       Route::post('/refresh-access-token', 'refreshToken')->middleware('jauth');
+      Route::post('/users/address', 'storeAddress')->middleware('jauth');
     });
 
   // Store Protected Routes
@@ -100,4 +107,18 @@ use GuzzleHttp\Middleware;
       Route::post('/cart', 'store');
       Route::put('/cart/{id}', 'update');
       Route::delete('/cart/{id}', 'destroy');
+    });
+
+  // Order Protected Routes
+    Route::group(['prefix' => 'beta', 'middleware' => 'jauth', 'controller' => OrderController::class], function () {
+      Route::get('/orders', 'index');
+      Route::get('/orders/{code}', 'show');
+      Route::post('/orders', 'store');
+    });
+
+  // Delivery Service Protected Routes
+    Route::group(['prefix' => 'beta', 'middleware' => 'jauth:su', 'controller' => CartController::class], function () {
+      Route::post('/delivery-services', 'store');
+      Route::put('/delivery-services/{id}', 'update');
+      Route::delete('/delivery-services/{id}', 'destroy');
     });

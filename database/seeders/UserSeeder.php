@@ -44,6 +44,20 @@ class UserSeeder extends Seeder
                 'updated_at' => now(),
                 'updated_tz' => date_default_timezone_get()
             ],
+            [
+                'name' => 'su Test 1',
+                'email' => 'su1@test.ty',
+                'email_prefix' => 's***1@t***t.ty',
+                'verified_at' => now(),
+                'phone' => null,
+                'phone_prefix' => null,
+                'role' => 'su',
+                'password' => Hash::make('supassword'),
+                'created_at' => now(),
+                'created_tz' => date_default_timezone_get(),
+                'updated_at' => now(),
+                'updated_tz' => date_default_timezone_get()
+            ]
         ]);
 
         User::factory()->count(5)->create();

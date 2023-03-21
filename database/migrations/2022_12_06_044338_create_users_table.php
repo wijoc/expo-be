@@ -33,9 +33,11 @@ class CreateUsersTable extends Migration
 
         Schema::create('user_address', function (Blueprint $table) {
             $table->id();
+            $table->string('recipient_name', 50);
             $table->longText('full_address');
-            $table->text('note');
             $table->string('postal_code', 50);
+            $table->string('status', 2);
+            $table->text('note')->nullable();
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');

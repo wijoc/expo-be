@@ -17,6 +17,10 @@ class User extends Authenticatable implements JWTSubject
     protected $primaryKey = 'id';
     protected $fillable = ['name', 'email', 'email_prefix', 'verified_at', 'phone', 'phone_prefix', 'password', 'role', 'image_path', 'image_mime'];
 
+    public function address () {
+        return $this->hasMany('App\Models\Store', 'id', 'user_id');
+    }
+
     public function store () {
         return $this->hasOne('App\Models\Store', 'id', 'store_id');
     }

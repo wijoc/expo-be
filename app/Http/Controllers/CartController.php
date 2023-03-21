@@ -42,18 +42,22 @@ class CartController extends Controller
                 }
 
                 array_push($items, [
-                    'id' => $value->id,
+                    'cart_id' => $value->id,
                     'product' => $value->name,
                     'product_uuid' => $value->product_uuid,
-                    'product_price' => floatval($value->net_price),
+                    'product_initial_price' => floatval($value->initial_price),
+                    'product_net_price' => floatval($value->net_price),
+                    'product_discount_percent' => $value->disc_percent,
+                    'product_discount_price' => $value->disc_price,
                     'quantity' => floatval($value->product_qty),
+                    'weight_in_gram' => $value->weight_g,
                     'store' => $value->store_name,
                     'store_domain' => $value->domain
                 ]);
 
                 $data[$value->store_id]['items'] = $items;
 
-                $totalCart = floatval($value->net_price) * floatval($value->product_qty);
+                $totalCart = floatval($totalCart) + (floatval($value->net_price) * floatval($value->product_qty));
             }
         }
 

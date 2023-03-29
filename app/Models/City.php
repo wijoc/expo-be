@@ -11,7 +11,7 @@ class City extends Model
 
     protected $table = 'ref_city';
     protected $primaryKey = 'id';
-    protected $fillable = ['name'];
+    protected $fillable = ['name', 'ro_api_code', 'province_id'];
 
     public function province () {
         return $this->belongsTo('App\Models\Province', 'province_id', 'id');
@@ -47,6 +47,10 @@ class City extends Model
             ->sorting($filters)
             ->with(['province'])
             ->get();
+    }
+
+    public function findCity (Int $id) {
+        return City::select('id', 'name', 'ro_api_code', 'province_id')->with(['province'])->find($id);
     }
 
     public function countAll ($filters = null) {

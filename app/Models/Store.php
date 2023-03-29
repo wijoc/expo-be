@@ -15,7 +15,7 @@ class Store extends Model
     protected $fillable = ['store_name', 'domain', 'email', 'phone', 'whatsapp', 'image_path', 'image_mime', 'description', 'full_address', 'user_id', 'district_id', 'city_id', 'province_id'];
 
     public function storeuser () {
-        return $this->belongsTo('App\Models\User', 'id', 'user_id');
+        return $this->belongsTo('App\Models\User', 'user_id', 'id');
     }
 
     public function district () {

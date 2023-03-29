@@ -53,8 +53,11 @@ use GuzzleHttp\Middleware;
 
     // Region Routes
     Route::get('/provinces', [ProvinceController::class, 'index']);
+    Route::get('/provinces/{id}', [ProvinceController::class, 'show']);
     Route::get('/cities', [CityController::class, 'index']);
+    Route::get('/cities/{id}', [CityController::class, 'show']);
     Route::get('/districts', [DistrictController::class, 'index']);
+    Route::get('/districts/{id}', [DistrictController::class, 'show']);
 
     // Delivery Service Routes
     Route::get('/delivery-services', [DeliveryController::class, 'index']);

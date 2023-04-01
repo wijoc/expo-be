@@ -17,13 +17,27 @@ class CityController extends Controller
 
     public function index(Request $request)
     {
-        $citiesData = $this->cityModel->getCities($request);
+        $filter = [
+            'search' => $request->search,
+            'order' => $request->sort && in_array(strtolower($request->sort), ['asc', 'desc']) ? strtolower($request->sort) : 'asc',
+            'province' => $request->province
+        ];
+
+        if (strtolower($request->sort) === 'id' || strtolower($request->sort) === 'name') {
+            $filter['sort'] = strtolower($request->sort);
+        } else if (strtolower($request->sort) === 'province') {
+            $filter['sort'] = 'province_id';
+        } else {
+            $filter['sort'] = 'id';
+        }
+
+        $citiesData = $this->cityModel->getCities($filter);
         return response()->json([
             'success' => $citiesData && count($citiesData) > 0 ? true : false,
             'message' => $citiesData && count($citiesData) > 0 ? 'Data found' : 'No Data available',
-            'search' => $request->search,
-            'sort_by' => $request->sort,
-            'sort_order' =>$request->order,
+            'search' => $filter['search'],
+            'sort_by' => $filter['sort'],
+            'sort_order' =>$filter['order'],
             'count_data' => count($citiesData),
             'count_all' => $this->cityModel->countAll($request)->first()['count_all'],
             'data' => CityResource::collection($citiesData)

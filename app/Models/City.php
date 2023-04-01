@@ -27,11 +27,19 @@ class City extends Model
 
     protected function scopeFilter ($query, $filters) {
         $query->when($filters['province'] && is_array($filters['province']) ?? false, function ($query, $fProvince) {
-            $query->whereIn('province_id', $fProvince);
+            if (is_numeric($fProvince)) {
+                $query->where('province_id', '=', $fProvince);
+            }
         });
 
         $query->when($filters['search'] ?? false, function ($query, $keyword) {
-            $query->where('name', 'like', '%'.$keyword.'%');
+            if (is_string($keyword)) {
+                $query->orWhereRaw('LOWER(name) LIKE ?', '%'.strtolower($keyword).'%');
+            } else if (is_array($keyword)) {
+                foreach ($keyword as $value) {
+                    $query->orWhereRaw('LOWER(name) LIKE ?', '%'.strtolower($value).'%');
+                }
+            }
         });
     }
 

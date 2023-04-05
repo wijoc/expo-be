@@ -8,7 +8,6 @@ use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 use App\Models\Store;
 use App\Models\KeywordLog;
-use App\Models\ShowProductLog;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductCategory;
@@ -25,7 +24,6 @@ class ProductController extends Controller
 
     public function __construct(){
         $this->productModel = new Product();
-        $this->productLogModel = new ShowProductLog();
         $this->keywordLogModel = new KeywordLog();
         $this->rules = [
             'name' => 'required|min:1|max:60',
@@ -59,16 +57,23 @@ class ProductController extends Controller
 
     public function index(Request $request)
     {
-        $filters['client_ip'] = $_SERVER['REMOTE_ADDR'] ?? $request->ip();
-        $filters['user_id'] = auth()->guard('api')->user()->id ?? null;
-        $filters['search'] = $request->search ?? null;
+        $filters = [
+            'search' => $request->search ?? null,
+            'user_id' => auth()->guard('api')->user()->id ?? null,
+            'condition' => $request->condition ?? null,
+            'min_price' => $request->min_price && is_numeric($request->min_price) ? round(floatval($request->min_price), 2) : 0,
+            'max_price' => $request->max_price && is_numeric($request->max_price) ? round(floatval($request->max_price), 2) : null,
+            'city' => $request->city ?? null,
+            'province' => $request->province ?? null,
+            'page' => $request->sort !== 'relevant' ? $request->page : 'all',
+            'limit' => $request->sort !== 'relevant' && $request->per_page && $request->per_page > 0 ? $request->per_page : 100000
+        ];
 
         // Set Sorting
         switch ($request->sort) {
             case "relevant":
                 $filters['sort'] = false;
                 break;
-            // case "featured":
             // case "popularity":
             //     $filters['order'] = $request->order ?? 'ASC';
             //     $filters['sort'] = 'popularity_poin';
@@ -95,66 +100,31 @@ class ProductController extends Controller
                 $filters['sort'] = false;
         }
 
-        // Set Paginate
-        if ($request->page !== 'all') {
-            $filters['page'] = $request->page;
-            $filters['limit'] = ($request->per_page && $request->per_page > 0 ? $request->per_page : 100);
-            if ($request->page > 1) $filters['offset'] = $request->page - 1 * $filters['limit'];
-        }
+        // Write Log Client keyword
+        if ($request->search && is_string($request->search)) {
+            $userID = auth()->guard('api')->user() ? auth()->guard('api')->user()->id : null;
 
-        // Set limit IF ONLY SORT BY "relevant"
-        if (!$request->sort || $request->sort === "relevant") {
-            if (!$request->search) {
-                $last3Keyword = $this->keywordLogModel->getLastKeyword($filters, 3);
-
-                if ($last3Keyword && count($last3Keyword) > 1) {
-                    $keywords = [];
-                    foreach ($last3Keyword as $key => $value) {
-                        array_push($keywords, $value['keyword']);
-                    }
-                    $filters['multi-search'] = $keywords;
-                } else if (count($last3Keyword) == 1) {
-                    $filters['search'] = $last3Keyword[0]['keyword'];
-                }
+            $clientIP = $_SERVER['REMOTE_ADDR'] ?? $request->ip();
+            // Check for the X-Forwarded-For header
+            if ($request->header('X-Forwarded-For')) {
+                $forwardedIPs = explode(',', $request->header('X-Forwarded-For'));
+                $clientIP = trim(end($forwardedIPs));
             }
 
-            if ($request->page !== 'all') {
-                $filters['timelimit'] = date('Y-m-d H:i:s', strtotime('-1 hour'));
-                $pageData = $this->productLogModel->thisPageLog($filters);
-
-                if ($pageData && count($pageData) > 0) {
-                    $filters['where_in'] = explode(',', $pageData[0]->store_id);
-                }
-                if ($request->page > 1 && !$pageData || count($pageData) <= 0) {
-                    $prevData = $this->productLogModel->previousLog($filters);
-                    $notIn = [];
-
-                    if ($prevData && count($prevData) > 0){
-                        foreach($prevData as $key => $value) {
-                            $notIn = array_merge($notIn, explode(',', $value['store_id']));
-                        }
-
-                        $filters['where_not_in'] = $notIn;
-                    }
-                }
+            $check = $this->keywordLogModel->getKeywordLog($clientIP, $userID, $filters['search'])->first();
+            if (!$check) {
+                $this->keywordLogModel->writeLogKeyword([
+                    'client_ip' => $clientIP,
+                    'user_id' => $userID,
+                    'keyword' => $request->search,
+                    'created_at' => now(),
+                    'created_tz' => date_default_timezone_get()
+                ]);
             }
-        }
-
-        // Log Client keyword
-        if ($request->search) {
-            KeywordLog::upsert([
-                'client_ip' => $filters['client_ip'],
-                'user_id' => auth()->guard('api')->user()->id ?? NULL,
-                'keyword' => $request->search,
-                'created_at' => now(),
-                'created_tz' => date_default_timezone_get(),
-                'updated_at' => now(),
-                'updated_tz' => date_default_timezone_get()
-            ], ['client_ip', 'user_id', 'keyword'], ['updated_at', 'updated_tz']);
         }
 
         // Get Product Data
-        $products = $this->productModel->getProducts($request);
+        $products = $this->productModel->getProducts($filters);
 
         return response()->json([
             'success' => true,
@@ -163,6 +133,7 @@ class ProductController extends Controller
             'sort_by' => $request->sort ?? null,
             'sort_order' => $request->order ?? null,
             'page' => $request->page ?? null,
+            'row_per_page' => $filters['limit'],
             'count_data' => $products ? count($products) : null,
             'count_all' => $this->productModel->countAll()[0]->count_all,
             'data' => $products ? ProductResource::collection($products) : null

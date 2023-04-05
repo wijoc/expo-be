@@ -44,6 +44,8 @@ class CreateExhibitionsTable extends Migration
             $table->string('image_mime', 225)->nullable();
             $table->text('description')->nullable();
             $table->longText('full_address');
+            $table->string('status')->default(1);
+            $table->timestamp('deactivated_at')->nullable();
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');

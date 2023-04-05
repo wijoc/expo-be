@@ -31,25 +31,41 @@ class Store extends Model
     }
 
     public function product () {
-        return $this->hasMany('App\Models\Product', 'id', 'store_id');
+        return $this->hasMany('App\Models\Product', 'store_id', 'id');
     }
 
     public function delivery () {
         return $this->hasMany('App\Models\StoreDelivery', 'id', 'store_id');
     }
 
-    public function scopeFilter ($query, $filter) {
-        if ($filter['search']) {
-            $query->where('store.store_name', 'like', '%'.$filter['search'].'%');
-        } else {
-            $query->when($filter['multi-search'] ?? false, function ($query, $keywords) {
-                for ($i = 0; $i < count($keywords); $i++) {
-                    if ($i = 0) {
-                        $query->where('store.store_name', 'like', '%'.$keywords[$i].'%');
-                    } else {
-                        $query->orWhere('store.store_name', 'like', '%'.$keywords[$i].'%');
-                    }
+    public function scopeFilter ($query, $filters) {
+        $query->when($filters['search'] ?? false, function ($query, $keywords) {
+            if (is_string($keywords)) {
+                $query->whereRaw('LOWER(store.store_name) LIKE ?', '%'.strtolower($keywords).'%');
+            } else if (is_array($keywords)) {
+                foreach ($keywords as $value) {
+                    $query->orWhereRaw('LOWER(store.store_name) LIKE ?', '%'.strtolower($value).'%');
                 }
+            }
+        });
+
+        if ($filters['province'] || $filters['city']) {
+            $query->where(function ($query) use ($filters) {
+                $query->when($filters['province'] ?? false, function ($query, $fProvinces) {
+                    if (is_numeric($fProvinces)) {
+                        $query->orWhere('store.province_id', '=', $fProvinces);
+                    } else if (is_array($fProvinces)) {
+                        $query->orWhereIn('store.province_id', $fProvinces);
+                    }
+                });
+
+                $query->when($filters['city'] ?? false, function ($query, $fCities) {
+                    if (is_numeric($fCities)) {
+                        $query->orWhere('store.city_id', '=', $fCities);
+                    } else if (is_array($fCities)) {
+                        $query->orWhereIn('store.city_id', $fCities);
+                    }
+                });
             });
         }
     }
@@ -65,13 +81,6 @@ class Store extends Model
 
     public function scopeLimitation ($query, $filter) {
         if ($filter['page'] !== 'all') {
-            // if ($filter['sort'] || !isset($filter['where_not_in']) || empty($filter['where_not_in'])) {
-            if (!$filter['sort'] && isset($filter['where_not_in']) && !empty($filter['where_not_in'])) {
-                $query->whereNotIn('store.id', $filter['where_not_in']);
-            } else if (!$filter['sort'] && isset($filter['where_in']) && !empty($filter['where_in']) ) {
-                $query->whereIn('store.id', $filter['where_in']);
-            }
-
             $query->when($filter['limit'] ?? false, function ($query, $limit) {
                 $query->limit($limit);
             });
@@ -96,57 +105,85 @@ class Store extends Model
     }
 
     public function getStores ($filters) {
-      /**
-       * This Query is to get store with first 3 product
-       * PostgreSQL (using v12.12) didn't support := operand
-       * MySQL (using mariaDB v10) didn't support limit in subquery
-       * Not yet test the query in another type database */
+        /**
+         * This Query is to get store with first 3 product
+         * PostgreSQL (using v12.12) didn't support := operand
+         * MySQL (using mariaDB v10) didn't support limit in subquery
+         * Not yet test the query in another type database */
 
-        /** If you're using PostgreSQL, USE THIS QUERY */
-        return Store::select(
-                        'store.id as store_id',
-                        'store.*',
-                        'product.id as product_id',
-                        'product.product_uuid',
-                        'product.name as product_name',
-                        'product.net_price',
-                        'product.store_id as product_store',
-                        'tz')
-                ->leftJoin('product', 'product.store_id', '=', 'store.id')
-                ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
-                ->whereIn('product.id', function ($query) {
-                    $query->select('id')->from('product')->whereRaw('product.store_id = store.id')->limit(3);
-                })
-                ->orWhere(function ($query) {
-                    $query->whereNull('product.id');
-                })
-                ->filter($filters)
-                ->sorting($filters)
-                ->limitation($filters)
-                ->with(['province', 'city'])->get();
+          /** If you're using PostgreSQL, USE THIS QUERY */
+            return Store::select(
+                          'store.id as store_id',
+                          'store.*',
+                          'product.id as product_id',
+                          'product.product_uuid',
+                          'product.name as product_name',
+                          'product.net_price',
+                          'product.store_id as product_store',
+                          'tz')
+                    ->leftJoin('product', 'product.store_id', '=', 'store.id')
+                    ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
+                    ->whereIn('product.id', function ($query) {
+                        $query->select('id')->from('product')->whereRaw('product.store_id = store.id')->limit(3);
+                    })
+                    ->orWhere(function ($query) {
+                        $query->whereNull('product.id');
+                    })
+                    ->filter($filters)
+                    ->sorting($filters)
+                    ->limitation($filters)
+                    ->with(['province', 'city'])->get();
 
-        /** If you're using MySQL, USE THIS QUERY */
-            // $productInStore = Product::selectRaw('prd.*,
-            //                     @row_number:=CASE WHEN @store_id = store_id
-            //                                     THEN @row_number + 1
-            //                                     ELSE 1
-            //                                 END AS rn,
-            //                     @store_id := store_id')
-            //                     ->from('product as prd')
-            //                     ->crossJoin(DB::raw('(select @row_number := 1) as x'))
-            //                     ->crossJoin(DB::raw('(select @store_id := 1) as y'))
-            //                     ->orderBy('store_id', 'asc');
+          /** If you're using MySQL, USE THIS QUERY */
+              // $productInStore = Product::selectRaw('prd.*,
+              //                     @row_number:=CASE WHEN @store_id = store_id
+              //                                     THEN @row_number + 1
+              //                                     ELSE 1
+              //                                 END AS rn,
+              //                     @store_id := store_id')
+              //                     ->from('product as prd')
+              //                     ->crossJoin(DB::raw('(select @row_number := 1) as x'))
+              //                     ->crossJoin(DB::raw('(select @store_id := 1) as y'))
+              //                     ->orderBy('store_id', 'asc');
 
-            // return Store::select('store.id as store_id', 'store.*', 'product.id as product_id', 'product.name as product_name', 'product.store_id as product_store')
-            //         ->leftJoinSub($productInStore, 'product', function ($join) {
-            //             $join->on('product.store_id', '=', 'store.id')
-            //                 ->where('product.rn', '<=', 3)
-            //                 ->orWhere(function($query) {
-            //                     $query->whereNull('product.id');
-            //                 });
-            //             })
-            //         ->with(['province', 'city'])
-            //         ->get();
+              // return Store::select('store.id as store_id', 'store.*', 'product.id as product_id', 'product.name as product_name', 'product.store_id as product_store')
+              //         ->leftJoinSub($productInStore, 'product', function ($join) {
+              //             $join->on('product.store_id', '=', 'store.id')
+              //                 ->where('product.rn', '<=', 3)
+              //                 ->orWhere(function($query) {
+              //                     $query->whereNull('product.id');
+              //                 });
+              //             })
+              //         ->with(['province', 'city'])
+              //         ->get();
+
+          /** If you want to use left join lateral. NOT YET TESTED */
+            // return Store::select(
+            //                 'store.id as store_id',
+            //                 'store.*',
+            //                 'prd_id as product_id',
+            //                 'prd_product_uuid',
+            //                 'prd_name as product_name',
+            //                 'prd_price as product_price',
+            //                 'prd_store_id as product_store',
+            //                 'tz')
+            //         ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
+            //         ->leftJoin(DB::raw('LATERAL (
+            //             SELECT
+            //                 product.id as prd_id,
+            //                 product_uuid as prd_uuid,
+            //                 product.name as prd_name,
+            //                 product.net_price as prd_price,
+            //                 product.store_id as prd_store
+            //             FROM product
+            //             WHERE product.store_id = store.id
+            //             ORDER BY random() ASC
+            //             LIMIT 3
+            //         ) product'), true)
+            //         ->filter($filters)
+            //         ->sorting($filters)
+            //         ->limitation($filters)
+            //         ->with(['province', 'city'])->get();
     }
 
     public function findStore ($search) {

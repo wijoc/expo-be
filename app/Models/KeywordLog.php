@@ -11,18 +11,25 @@ class KeywordLog extends Model
 
     protected $table = 'client_keyword_log';
     protected $primaryKey = 'id';
-    protected $fillable = ['client_ip', 'user_id', 'keyword', 'created_at', 'updated_at'];
+    protected $fillable = ['keyword', 'search_count', 'created_at', 'updated_at'];
 
-    public function getLastKeyword($filters, $last = 1) {
-        return KeywordLog::where('client_ip', $filters['client_ip'])
-                            ->orWhere('user_id', $filters['user_id'])
-                            ->limit($last)->get();
+    public function getKeywordLog ($clientIP = null, $userID = null, $keyword) {
+        return KeywordLog::where(function ($query) use ($clientIP, $userID) {
+                                $query->when($clientIP ?? false, function ($query, $ip) {
+                                    $query->where('client_ip', $ip);
+                                })
+                                ->when($userID ?? false, function ($query, $user) {
+                                    $query->orWhere('user_id', $user);
+                                });
+                            })
+                            ->whereRaw('LOWER(keyword) = ?', strtolower($keyword))->get();
     }
 
-    public function thisKeywordLog($filters) {
-        return KeywordLog::where('client_ip', $filters['client_ip'])
-                            ->orWhere('user_id', $filters['user_id'])
-                            ->where('keyword', $filters['search'])
-                            ->get();
+    public function writeLogKeyword ($data) {
+        return KeywordLog::insert($data);
+    }
+
+    public function updateLogKeyword ($keyword, $data) {
+        return KeywordLog::where('keyword', $keyword)->update($data);
     }
 }

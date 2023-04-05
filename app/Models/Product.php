@@ -31,8 +31,14 @@ class Product extends Model
     }
 
     protected function scopeFilter ($query, $filters) {
-        $query->when($filters['search'] ?? false, function ($query, $keyword) {
-            $query->where('product.name', 'like', '%'.$keyword.'%');
+        $query->when($filters['search'] ?? false, function ($query, $keywords) {
+            if (is_string($keywords)) {
+                $query->whereRaw('LOWER(product.name) LIKE ?', '%'.strtolower($keywords).'%');
+            } else if (is_array($keywords)) {
+                foreach ($keywords as $value) {
+                    $query->orWhereRaw('LOWER(product.name) LIKE ?', '%'.strtolower($value).'%');
+                }
+            }
         });
 
         $query->when($filters['condition'] ?? false, function ($query, $condition) {
@@ -54,6 +60,26 @@ class Product extends Model
         $query->when($filters['store'] ?? false, function ($query, $store) {
             $query->where('store_id', $store);
         });
+
+        if (isset($filters['province']) || isset($filters['city'])) {
+            $query->where(function ($query) use ($filters) {
+                $query->when($filters['province'] ?? false, function ($query, $fProvinces) {
+                    if (is_numeric($fProvinces)) {
+                        $query->orWhere('store.province_id', '=', $fProvinces);
+                    } else if (is_array($fProvinces)) {
+                        $query->orWhereIn('store.province_id', $fProvinces);
+                    }
+                });
+
+                $query->when($filters['city'] ?? false, function ($query, $fCities) {
+                    if (is_numeric($fCities)) {
+                        $query->orWhere('store.city_id', '=', $fCities);
+                    } else if (is_array($fCities)) {
+                        $query->orWhereIn('store.city_id', $fCities);
+                    }
+                });
+            });
+        }
     }
 
     protected function scopeMultisearch ($query, $filters) {
@@ -76,12 +102,6 @@ class Product extends Model
 
     protected function scopeLimitation ($query, $filter) {
         if ($filter['page'] !== 'all') {
-            if (!$filter['sort'] && isset($filter['where_not_in']) && !empty($filter['where_not_in'])) {
-                $query->whereNotIn('product.id', $filter['where_not_in']);
-            } else if (!$filter['sort'] && isset($filter['where_in']) && !empty($filter['where_in']) ) {
-                $query->whereIn('product.id', $filter['where_in']);
-            }
-
             $query->when($filter['limit'] ?? false, function ($query, $limit) {
                 $query->limit($limit);
             });
@@ -137,6 +157,8 @@ class Product extends Model
                     })
                     ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
                     ->filter($filters)
+                    ->sorting($filters)
+                    ->limitation($filters)
                     ->with('image')
                     ->get();
     }

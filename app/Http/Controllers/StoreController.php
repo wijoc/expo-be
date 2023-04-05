@@ -13,7 +13,6 @@ use App\Models\Province;
 use App\Models\City;
 use App\Models\District;
 use App\Models\KeywordLog;
-use App\Models\ShowStoreLog;
 use App\Models\StoreCategory;
 use App\Http\Resources\StoreResource;
 use GuzzleHttp\Psr7\Message;
@@ -22,7 +21,6 @@ class StoreController extends Controller
 {
     protected $storeModel;
     protected $productModel;
-    protected $storeLogModel;
     protected $keywordLogModel;
     protected $rules;
     protected $messages;
@@ -31,7 +29,6 @@ class StoreController extends Controller
     {
         $this->storeModel = new Store();
         $this->productModel = new Product();
-        $this->storeLogModel = new ShowStoreLog();
         $this->keywordLogModel = new KeywordLog();
 
         $this->rules = [
@@ -79,13 +76,21 @@ class StoreController extends Controller
      */
     public function index(Request $request)
     {
-        $filters['client_ip'] = $_SERVER['REMOTE_ADDR'] ?? $request->ip();
-        $filters['user_id'] = auth()->guard('api')->user()->id ?? null;
-        $filters['search'] = $request->search ?? null;
-        if ($request->city && count($request->city) > 0) {
-            $filters['city'] = $request->city;
-        } else {
-            $filters['city'] = false;
+        $filters = [
+            'search' => $request->search ?? null,
+            'city' => $request->city ?? null,
+            'province' => $request->province ?? null,
+            'page' => $request->sort !== 'relevant' ? $request->page : 'all',
+            'limit' => $request->sort !== 'relevant' && $request->per_page && $request->per_page > 0 ? $request->per_page : 100000
+        ];
+
+        // Set Offset
+        if ($request->sort !== 'relevant') {
+            if ($request->page > 1) {
+                $filters['offset'] = (intval($request->page) - 1) * $filters['limit'];
+            } else {
+                $filters['offset'] = 0;
+            }
         }
 
         // Set Sorting
@@ -93,7 +98,6 @@ class StoreController extends Controller
             case "relevant":
                 $filters['sort'] = false;
                 break;
-            // case "featured":
             // case "popularity":
             //     $filters['order'] = $request->order ?? 'ASC';
             //     $filters['sort'] = 'popularity_poin';
@@ -116,112 +120,29 @@ class StoreController extends Controller
                 $filters['sort'] = false;
         }
 
-        // Set Limit & Offset
-        if ($request->page !== 'all') {
-            $filters['page'] = $request->page;
-            $filters['limit'] = ($request->per_page && $request->per_page > 0 ? $request->per_page : 30);
-            if ($request->page > 1) $filters['offset'] = $request->page - 1 * $filters['limit'];
-        }
+        // Write Log Client keyword
+        if ($request->search && is_string($request->search)) {
+            $userID = auth()->guard('api')->user() ? auth()->guard('api')->user()->id : null;
 
-        // Set Limit IF ONLY SORT BY "relevant"
-        if (!$request->sort || $request->sort === "relevant") {
-            if (!$request->search) {
-                $last3Keyword = $this->keywordLogModel->getLastKeyword($filters, 3);
-
-                if ($last3Keyword && count($last3Keyword) > 1) {
-                    $keywords = [];
-                    foreach ($last3Keyword as $key => $value) {
-                        array_push($keywords, $value['keyword']);
-                    }
-                    $filters['multi-search'] = $keywords;
-                } else if (count($last3Keyword) == 1) {
-                    $filters['search'] = $last3Keyword[0]['keyword'];
-                }
+            $clientIP = $_SERVER['REMOTE_ADDR'] ?? $request->ip();
+            // Check for the X-Forwarded-For header
+            if ($request->header('X-Forwarded-For')) {
+                $forwardedIPs = explode(',', $request->header('X-Forwarded-For'));
+                $clientIP = trim(end($forwardedIPs));
             }
 
-            if ($request->page !== 'all') {
-                $filters['timelimit'] = date('Y-m-d H:i:s', strtotime('-1 hour'));
-                $pageData = $this->storeLogModel->thisPageLog($filters);
-
-                if ($pageData && count($pageData) > 0) {
-                    $filters['where_in'] = explode(',', $pageData[0]->store_id);
-                    if (count($filters['where_in']) < $request->per_page) {
-                        $filters['where_in'] = false;
-                        $prevData = $this->storeLogModel->previousLog($filters);
-                        $notIn = [];
-
-                        if ($prevData && count($prevData) > 0){
-                            foreach($prevData as $key => $value) {
-                                $notIn = array_merge($notIn, explode(',', $value['store_id']));
-                            }
-
-                            $filters['where_not_in'] = $notIn;
-                        }
-                    }
-                }
-                if ($request->page > 1 && !$pageData || count($pageData) <= 0) {
-                    $prevData = $this->storeLogModel->previousLog($filters);
-                    $notIn = [];
-
-                    if ($prevData && count($prevData) > 0){
-                        foreach($prevData as $key => $value) {
-                            $notIn = array_merge($notIn, explode(',', $value['store_id']));
-                        }
-
-                        $filters['where_not_in'] = $notIn;
-                    }
-                }
-            }
-        }
-
-        // Log Client keyword
-        if ($request->search) {
-            /** Update client Keyword log IF YOU USING POSTGRESQL READ THIS !
-             * Since non of field ['client_ip', 'user_id', 'keyword'] is unique
-             * and sometime value is NULL, upsert not working for postgreSQL (maybe i don't know how)
-             * so here this will check if row-data exist, and determine whether to insert or update.
-             *
-             * IF YOU USING MySQL / MairaDB, i think upsert will do just fine.
-             */
-
-            /** Upsert Syntax */
-                // KeywordLog::upsert([
-                //     'client_ip' => $filters['client_ip'],
-                //     'user_id' => auth()->guard('api')->user()->id ?? NULL,
-                //     'keyword' => $request->search,
-                //     'created_at' => now(),
-                //     'created_tz' => date_default_timezone_get(),
-                //     'updated_at' => now(),
-                //     'updated_tz' => date_default_timezone_get()
-                // ], ['client_ip', 'user_id', 'keyword'], ['updated_at', 'updated_tz']);
-
-
-            $check = $this->storeLogModel->thisPageLog([
-                'client_ip' => $filters['client_ip'] ?? null,
-                'user_id' => auth()->guard('api')->user() ? auth()->guard('api')->user()->id : NULL,
-                'page' => $request->page,
-                'search' => $request->search ?? null,
-                'timelimit' => false
-            ])->first();
-
-
-            if ($check) {
-                KeywordLog::where('id', $check['id'])->update([
-                    'updated_at' => now(),
-                    'updated_tz' => date_default_timezone_get()
-                ]);
-            } else {
-                KeywordLog::insert([
-                    'client_ip' => $filters['client_ip'] ?? null,
-                    'user_id' => auth()->guard('api')->user() ? auth()->guard('api')->user()->id : NULL,
+            $check = $this->keywordLogModel->getKeywordLog($clientIP, $userID, $filters['search'])->first();
+            if (!$check) {
+                $this->keywordLogModel->writeLogKeyword([
+                    'client_ip' => $clientIP,
+                    'user_id' => $userID,
                     'keyword' => $request->search,
                     'created_at' => now(),
-                    'created_tz' => date_default_timezone_get(),
-                    'updated_at' => now(),
-                    'updated_tz' => date_default_timezone_get()
+                    'created_tz' => date_default_timezone_get()
                 ]);
             }
         }
+
         // Get Store Data
         if ($request->with_product) {
             $storesData = $this->storeModel->getStores($filters);
@@ -256,71 +177,13 @@ class StoreController extends Controller
                 $storesData = array_values($data);
             }
 
-            // Log showed row (ONLY IF SORT "relevant")
-            if ($request->page && $request->page !== 'all' && !$request->sort || $request->sort === "relevant") {
-                $storeID = [];
-                foreach($storesData as $values) {
-                    array_push($storeID, $values['store_id']);
-                }
-                $storeID = implode(',', $storeID);
-
-                /** Update client search log IF YOU USING POSTGRESQL READ THIS !
-                 * Since non of field ['client_ip', 'user_id', 'page', 'keyword'] is unique
-                 * and sometime value is NULL, upsert not working for postgreSQL (maybe i don't know how)
-                 * so here this will check if row-data exist, and determine whether to insert or update.
-                 *
-                 * IF YOU USING MySQL / MairaDB, i think upsert will do just fine.
-                 */
-
-                /** Upsert */
-                    // ShowStoreLog::upsert([
-                    //     'client_ip' => $filters['client_ip'] ?? null,
-                    //     'user_id' => auth()->guard('api')->user() ? auth()->guard('api')->user()->id : NULL,
-                    //     'page' => $request->page,
-                    //     'keyword' => $request->search ?? null,
-                    //     'store_id' => $storeID,
-                    //     'created_at' => now(),
-                    //     'created_tz' => date_default_timezone_get(),
-                    //     'updated_at' => now(),
-                    //     'updated_tz' => date_default_timezone_get()
-                    // ], ['client_ip', 'user_id', 'page', 'keyword'], ['store_id', 'updated_at', 'updated_tz']);
-
-                $check = $this->storeLogModel->thisPageLog([
-                    'client_ip' => $filters['client_ip'] ?? null,
-                    'user_id' => auth()->guard('api')->user() ? auth()->guard('api')->user()->id : NULL,
-                    'page' => $request->page,
-                    'search' => $request->search ?? null,
-                    'timelimit' => false
-                ])->first();
-
-                if ($check) {
-                    ShowStoreLog::where('id', $check['id'])->update([
-                        'store_id' => $storeID,
-                        'updated_at' => now(),
-                        'updated_tz' => date_default_timezone_get()
-                    ]);
-                } else {
-                    ShowStoreLog::insert([
-                        'client_ip' => $filters['client_ip'] ?? null,
-                        'user_id' => auth()->guard('api')->user() ? auth()->guard('api')->user()->id : NULL,
-                        'page' => $request->page,
-                        'keyword' => null,
-                        'store_id' => $storeID,
-                        'created_at' => now(),
-                        'created_tz' => date_default_timezone_get(),
-                        'updated_at' => now(),
-                        'updated_tz' => date_default_timezone_get()
-                    ]);
-                }
-            }
-
             return response()->json([
                 'success' => true,
                 'message' => 'Data Found',
-                'search' => $request->search,
-                'sort_by' => $request->sort,
-                'sort_order' =>$request->order,
-                'page' => $request->page,
+                'search' => $request->search ?? null,
+                'sort_by' => $request->sort ?? null,
+                'sort_order' =>$request->order ?? null,
+                'page' => $request->page ?? null,
                 'row_per_page' => $filters['limit'],
                 'count_data' => count($storesData),
                 'count_all' => $this->storeModel->countAll($filters)->first()['count_all'],
@@ -330,13 +193,13 @@ class StoreController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'No data available',
-                'search' => $request->search,
-                'sort_by' => $request->sort,
-                'sort_order' =>$request->order,
-                'page' => $request->page,
+                'search' => $request->search ?? null,
+                'sort_by' => $request->sort ?? null,
+                'sort_order' =>$request->order ?? null,
+                'page' => $request->page ?? null,
                 'row_per_page' => $filters['limit'],
-                'count_data' => count($storesData),
-                'count_all' => $this->storeModel->countAll($filters)->first()['count_all'],
+                'count_data' => 0,
+                'count_all' => 0,
                 'data' => null
             ], 200);
         }
@@ -386,6 +249,7 @@ class StoreController extends Controller
             } else {
                 $validated = [
                     'store_name' => $validator->validated()['store_name'],
+                    'status' => 1, // 1 is active, 0 is deactive
                     'domain' => $validator->validated()['domain'],
                     'email' => $validator->validated()['email'],
                     'phone' => $validator->validated()['phone'],
@@ -427,10 +291,10 @@ class StoreController extends Controller
      * @param  \App\Models\Store  $store
      * @return \Illuminate\Http\Response
      */
-    public function show(Request $request, $slug)
+    public function show(Request $request, $domain)
     {
-        if ($slug) {
-            $store = $this->storeModel->findStore($slug)[0];
+        if ($domain) {
+            $store = $this->storeModel->findStore($domain)[0];
             if ($request->with_product && $request->with_product !== 'false') {
                 $store['products'] = ProductResource::collection($this->productModel->getProducts(['store'], $store->store_id));
             }
@@ -445,13 +309,13 @@ class StoreController extends Controller
             } else {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Data with ID = '.$slug.' or domain = '.$slug.' not found!'
+                    'message' => 'Data with ID = '.$domain.' or domain = '.$domain.' not found!'
                 ], 404);
             }
         } else {
             return response()->json([
                 'success' => false,
-                'message' => 'Please provide path parameter (ID or slug domain)!'
+                'message' => 'Please provide path parameter (ID or domain)!'
             ], 400);
         }
     }
@@ -596,9 +460,9 @@ class StoreController extends Controller
         }
     }
 
-    public function productInStore(Request $request, $slug) {
-        if ($slug) {
-            $store = $this->storeModel->findStore($slug);
+    public function productInStore (Request $request, $domain) {
+        if ($domain) {
+            $store = $this->storeModel->findStore($domain);
             if ($store && count($store) > 0) {
                 $request->merge(['store' => $store[0]['id']]);
                 $products = $this->productModel->getProducts($request);

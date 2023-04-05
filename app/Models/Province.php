@@ -18,23 +18,26 @@ class Province extends Model
         return $this->hasMany('App/Models/City', 'province_id', 'id');
     }
 
-    protected function scopeFilter ($query, $filters) {
-        $query->when($filters->search ?? false, function ($query, $keyword) {
+    protected function scopeFilter ($query, $filter) {
+        $query->when($filter->search ?? false, function ($query, $keyword) {
             $query->where('name', 'like', '%'.$keyword.'%');
         });
+    }
 
-        $query->when($filters->limit ?? false, function ($query, $lim) {
+    protected function scopeLimitation ($query, $filter) {
+        $query->when($filter->limit ?? false, function ($query, $lim) {
             $query->limit($lim);
         });
 
-        $query->when($filters->offset ?? false, function ($query, $os) {
+        $query->when($filter->offset ?? false, function ($query, $os) {
             $query->limit($os);
         });
+    }
 
-        $query->when($filters->order ?? false, function ($query, $so) {
+    protected function scopeSorting ($query, $filter) {
+        $query->when($filter->order ?? false, function ($query, $so) {
             $query->orderBy('name', $so);
         });
-
     }
 
     public function countAll ($filters) {
@@ -44,6 +47,8 @@ class Province extends Model
     public function getProvince ($filters) {
         return Province::select('id', 'name')
                         ->filter($filters)
+                        ->limitation($filters)
+                        ->sorting($filters)
                         ->get();
     }
 

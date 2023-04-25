@@ -464,12 +464,60 @@ class StoreController extends Controller
         if ($domain) {
             $store = $this->storeModel->findStore($domain);
             if ($store && count($store) > 0) {
-                $request->merge(['store' => $store[0]['id']]);
-                $products = $this->productModel->getProducts($request);
+                $filters = [
+                    'store' => $store[0]['id'],
+                    'search' => $request->search ?? null,
+                    'condition' => $request->condition ?? null,
+                    'page' => $request->sort !== 'relevant' ? $request->page : 'all',
+                    'limit' => $request->sort !== 'relevant' && $request->per_page && $request->per_page > 0 ? $request->per_page : 100000
+                ];
+
+                // Set Offset
+                if ($request->sort !== 'relevant') {
+                    if ($request->page > 1) {
+                        $filters['offset'] = (intval($request->page) - 1) * $filters['limit'];
+                    } else {
+                        $filters['offset'] = 0;
+                    }
+                }
+
+                // Set Sorting
+                switch ($request->sort) {
+                    case "relevant":
+                        $filters['sort'] = false;
+                        break;
+                    // case "popularity":
+                    //     $filters['order'] = $request->order ?? 'ASC';
+                    //     $filters['sort'] = 'popularity_poin';
+                    //     break;
+                    case "name":
+                        $filters['order'] = $request->order ?? 'ASC';
+                        $filters['sort'] = 'store_name';
+                        break;
+                    case "newest":
+                    case "latest":
+                        $filters['order'] = 'ASC';
+                        $filters['sort'] = 'created_at';
+                        break;
+                    case "oldest":
+                        $filters['order'] = 'DESC';
+                        $filters['sort'] = 'created_at';
+                        break;
+                    default:
+                        $filters['order'] = $request->order ?? 'ASC';
+                        $filters['sort'] = false;
+                }
+
+                $products = $this->productModel->getProducts($filters);
 
                 if ($products && count($products) > 0) {
                     return response()->json([
                         'success' => true,
+                        'search' => $request->search ?? null,
+                        'sort_by' => $request->sort ?? null,
+                        'sort_order' =>$request->order ?? null,
+                        'page' => $request->page ?? null,
+                        'row_per_page' => $filters['limit'],
                         'count_data' => count($products),
                         'count_all' => $this->productModel->countAll($request)[0]->count_all,
                         'data' => ProductResource::collection($products)
@@ -477,7 +525,12 @@ class StoreController extends Controller
                 } else {
                     return response()->json([
                         'success' => true,
-                        'message' => 'No product data faund',
+                        'search' => $request->search ?? null,
+                        'sort_by' => $request->sort ?? null,
+                        'sort_order' =>$request->order ?? null,
+                        'page' => $request->page ?? null,
+                        'row_per_page' => $filters['limit'],
+                        'message' => 'No product data found',
                         'count_data' => count($products),
                         'count_all' => $this->productModel->countAll($request)[0]->count_all,
                         'data' => null

@@ -24,7 +24,7 @@ class ProductResource extends JsonResource
             'id' => $this->id,
             'uuid' => $this->product_uuid,
             'name' => $this->product_name,
-            'condition' => ($this->condition === 'N' ? 'Baru' : 'Bekas / Pre-Loved'),
+            'condition' => ($this->condition === 'N' ? 'Baru' : 'Bekas'),
             'price_initial' => $this->initial_price,
             'price_net' => $this->net_price,
             'discount_percent' => $this->disc_percent,

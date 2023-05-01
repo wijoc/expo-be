@@ -43,7 +43,7 @@ class TimeHelper {
         $originOffset = $hour.":".$minute;
 
         $time = Carbon::parse($timestamp)->format('Y-m-d H:i:s');
-        $times = $time.($originOffset >= 0 ? '+'.$originOffset : '-'.$originOffset);
+        $times = $time.($originOffset >= 0 ? '+'.$originOffset : $originOffset);
         $newTimes = Carbon::parse($times, $originTz)->setTimezone($remoteTz)->format('c');
 
         // return gettype(Carbon::parse($timestamp)->format('Y-m-d H:i:s'));

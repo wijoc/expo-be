@@ -57,6 +57,12 @@ class Product extends Model
             $query->where('net_price', '<=', $maxPrice);
         });
 
+        $query->when($filters['category'] ?? false, function ($query, $categories) {
+            if (is_array($categories)) {
+                $query->whereIn('product.category_id', $categories);
+            }
+        });
+
         $query->when($filters['store'] ?? false, function ($query, $store) {
             $query->where('store_id', $store);
         });

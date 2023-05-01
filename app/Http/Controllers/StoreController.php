@@ -468,8 +468,11 @@ class StoreController extends Controller
                     'store' => $store[0]['id'],
                     'search' => $request->search ?? null,
                     'condition' => $request->condition ?? null,
+                    'category' => $request->category ?? null,
+                    'min_price' => $request->min_price && is_numeric($request->min_price) ? round(floatval($request->min_price), 2) : 0,
+                    'max_price' => $request->max_price && is_numeric($request->max_price) ? round(floatval($request->max_price), 2) : null,
                     'page' => $request->sort !== 'relevant' ? $request->page : 'all',
-                    'limit' => $request->sort !== 'relevant' && $request->per_page && $request->per_page > 0 ? $request->per_page : 100000
+                    'limit' => $request->sort !== 'relevant' && $request->per_page && $request->per_page > 0 ? $request->per_page : 1000
                 ];
 
                 // Set Offset
@@ -510,32 +513,18 @@ class StoreController extends Controller
 
                 $products = $this->productModel->getProducts($filters);
 
-                if ($products && count($products) > 0) {
-                    return response()->json([
-                        'success' => true,
-                        'search' => $request->search ?? null,
-                        'sort_by' => $request->sort ?? null,
-                        'sort_order' =>$request->order ?? null,
-                        'page' => $request->page ?? null,
-                        'row_per_page' => $filters['limit'],
-                        'count_data' => count($products),
-                        'count_all' => $this->productModel->countAll($request)[0]->count_all,
-                        'data' => ProductResource::collection($products)
-                    ], 200);
-                } else {
-                    return response()->json([
-                        'success' => true,
-                        'search' => $request->search ?? null,
-                        'sort_by' => $request->sort ?? null,
-                        'sort_order' =>$request->order ?? null,
-                        'page' => $request->page ?? null,
-                        'row_per_page' => $filters['limit'],
-                        'message' => 'No product data found',
-                        'count_data' => count($products),
-                        'count_all' => $this->productModel->countAll($request)[0]->count_all,
-                        'data' => null
-                    ], 200);
-                }
+                return response()->json([
+                    'success' => true,
+                    'message' => $products && count($products) > 0 ? 'Data Found' : 'No product data found',
+                    'filtered' => ($request->search || $request->condition || $request->min_price || $request->max_price ? true : false),
+                    'sort_by' => $request->sort ?? null,
+                    'sort_order' =>$request->order ?? null,
+                    'page' => $request->page ?? null,
+                    'row_per_page' => $filters['limit'],
+                    'count_data' => count($products),
+                    'count_all' => $this->productModel->countAll($filters)[0]->count_all,
+                    'data' => $products && count($products) > 0 ? ProductResource::collection($products) : null
+                ], 200);
             } else {
                 return response()->json([
                     'success' => false,

@@ -21,18 +21,18 @@ class StoreResource extends JsonResource
             'id' => $this->store_id,
             'domain' => $this->domain,
             'store_name' => $this->store_name,
-            'email' => $this->email,
-            'phone' => $this->phone,
-            'whatsapp' => $this->whatsapp,
-            'description' => $this->description,
-            'full_address' => $this->full_address,
-            'district' => $this->district->name,
             'city' => $this->city->name,
             'city_ro_code' => $this->city->ro_api_code,
             'province' => $this->province->name,
             'store_image_path' => 'storage/'.$this->image_path,
             'store_image_mime' => $this->image_mime
         ];
+
+        $this->email ? $array['email'] = $this->email : false;
+        $this->phone ? $array['phone'] = $this->phone : false;
+        $this->whatsapp ? $array['whatsapp'] = $this->whatsapp : false;
+        $this->description ? $array['description'] = $this->description : false;
+        $this->full_address ? $array['full_address'] = $this->full_address : false;
 
         if ($this->created_tz !== 'SYSTEM') {
             $array['registered_at'] = Carbon::parse($this->created_at)->format('c');

@@ -81,7 +81,8 @@ class StoreController extends Controller
             'city' => $request->city ?? null,
             'province' => $request->province ?? null,
             'page' => $request->sort !== 'relevant' ? $request->page : 'all',
-            'limit' => $request->sort !== 'relevant' && $request->per_page && $request->per_page > 0 ? $request->per_page : 100000
+            'limit' => $request->per_page && $request->per_page > 0 ? $request->per_page : 30,
+            'except' => $request->sort !== 'relevant' && $request->except ? $request->except : []
         ];
 
         // Set Offset

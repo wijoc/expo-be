@@ -76,8 +76,8 @@ class Store extends Model
         $query->when($sort['sort'], function ($query, $s) use ($sort) {
             $query->orderBy($s, $sort['order']);
         }, function ($query) {
-            // $query->orderByRaw('RAND() ASC'); // For MySQL
-            $query->orderByRaw('RANDOM() ASC'); // For Postgres
+            // $query->orderByRaw('RAND()'); // For MySQL
+            $query->orderByRaw('RANDOM()'); // For Postgres
         });
     }
 
@@ -151,8 +151,59 @@ class Store extends Model
                         ), 'product.store_id', '=', 'store.id')
                     ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
                     ->with(['province', 'city'])->get();
+
+      /** Using fromRaw or fromSub
+       * This function is not written in laravel 8 docs
+       * fromRaw() => just need to write raw query
+       */
+        // return Store::select(
+        //             'store.id as store_id',
+        //             'store.*',
+        //             'product.id as product_id',
+        //             'product.product_uuid',
+        //             'product.name as product_name',
+        //             'product.net_price',
+        //             'product.store_id as product_store',
+        //             'tz')
+
+        //         /** fromSub */
+        //         ->fromSub($fromStore->toSql(), 'store')
+        //         ->mergeBindings($fromStore->getQuery())
+
+        //         /** fromRaw */
+        //         // ->fromRaw('(SELECT
+        //         //             id,
+        //         //             domain,
+        //         //             store_name,
+        //         //             image_path,
+        //         //             image_mime,
+        //         //             city_id,
+        //         //             province_id,
+        //         //             category_id
+        //         //             FROM store
+        //         //             WHERE store.status = \'1\'
+        //         //             ORDER BY RANDOM()
+        //         //             LIMIT 3) as store')
+
+        //         ->leftJoin(DB::raw(
+        //                 'LATERAL (
+        //                     SELECT
+        //                         id,
+        //                         product_uuid,
+        //                         name,
+        //                         net_price,
+        //                         store_id
+        //                     FROM product
+        //                     WHERE product.store_id = store.id
+        //                     ORDER BY random() ASC
+        //                     LIMIT 3
+        //                 ) product'
+        //             ), 'product.store_id', '=', 'store.id')
+        //         ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
+        //         ->with(['province', 'city'])->get();
     }
 
+    /** Find one spesific store row, by id or domain */
     public function findStore ($search) {
       /**
        * This Query is to find store where id = $search or where domain = $search
@@ -174,5 +225,120 @@ class Store extends Model
                     ->orWhere('domain', '=', $search)
                     ->with(['province', 'city', 'district'])
                     ->get();
+    }
+
+    /** Find Multiple stores by given array of id,
+     * sort by given array,
+     * WITHOUT PRODUCT */
+    public function findMultiStore ($ids) {
+        /** CHECK ORDER BY CASE IN FUNCTION findStores() COMMENT */
+        $orderCase = 'CASE store.id ';
+        for ($i = 0; $i < count($ids); $i++) {
+            $orderCase .= 'WHEN \''.$ids[$i].'\' THEN '.($i + 1).PHP_EOL;
+        }
+        $orderCase .= 'ELSE '.(count($ids) + 1).PHP_EOL.'END';
+
+        return Store::select(
+                        'store.id as store_id',
+                        'store.*',
+                        'tz')
+                ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
+                ->whereIn('store.id', $ids)
+                ->orderByRaw($orderCase)
+                ->with(['province', 'city'])->get();
+    }
+
+    /** Find Multiple stores by given array of id,
+     * sort by given array,
+     * WITH MAX 3 PRODUCT EACH "store" ROW */
+    public function findStores ($ids) {
+        /** READ THIS BEFORE CHANGING THE CODE
+         * This Query is to get store with first 3 product
+         * PostgreSQL (using v12.12) didn't support := operand
+         * MySQL (using mariaDB v10) didn't support limit in subquery
+         *
+         * Not yet test the query in another type database */
+
+        /** If you're using PostgreSQL, USE THIS QUERY
+         * the ORDER BY CASE is use to sort row in the order of the array order
+         * or to mimic the result of ORDER BY FIELD() in mysql and/or mariaDB
+        */
+            $orderCase = 'CASE store.id ';
+            for ($i = 0; $i < count($ids); $i++) {
+                $orderCase .= 'WHEN \''.$ids[$i].'\' THEN '.($i + 1).PHP_EOL;
+            }
+            $orderCase .= 'ELSE '.(count($ids) + 1).PHP_EOL.'END';
+
+            return Store::select(
+                          'store.id as store_id',
+                          'store.*',
+                          'product.id as product_id',
+                          'product.product_uuid',
+                          'product.name as product_name',
+                          'product.net_price',
+                          'product.store_id as product_store',
+                          'tz')
+                    ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
+                    ->leftJoin(DB::raw(
+                            'LATERAL (
+                                SELECT
+                                    id,
+                                    product_uuid,
+                                    name,
+                                    net_price,
+                                    store_id
+                                FROM product
+                                WHERE product.store_id = store.id
+                                ORDER BY random() ASC
+                                LIMIT 3
+                            ) product'
+                        ), 'product.store_id', '=', 'store.id')
+                    ->whereIn('store.id', $ids)
+                    ->orderByRaw($orderCase)
+                    ->with(['province', 'city'])->get();
+
+        /** If you use MySQL or mariaDB, USE THIS QUERY
+         * To Join with product, I think using join lateral will be better
+         * But, there is another way around ( is only for my study notes )
+         * to sort by given array in mysql, we use ORDER BY FIELD()
+         */
+            // $productInStore = Product::selectRaw('
+            //                     prd.id,
+            //                     pre.product_uuid,
+            //                     pre.name,
+            //                     pre.net_price,
+            //                     pre.store_id,
+            //                     @row_number:=CASE WHEN @store_id = store_id
+            //                                     THEN @row_number + 1
+            //                                     ELSE 1
+            //                                 END AS rn,
+            //                     @store_id := store_id')
+            //                     ->from('product as prd')
+            //                     ->crossJoin(DB::raw('(select @row_number := 1) as x'))
+            //                     ->crossJoin(DB::raw('(select @store_id := 1) as y'))
+            //                     ->orderBy('store_id', 'asc');
+
+            // $orderField = 'id, '.implode(', ', $ids);
+
+            // return Store::select(
+            //             'store.id as store_id',
+            //             'store.*',
+            //             'product.id as product_id',
+            //             'product.product_uuid',
+            //             'product.name as product_name',
+            //             'product.net_price',
+            //             'product.store_id as product_store',
+            //             'tz')
+            //         ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
+            //         ->leftJoinSub($productInStore, 'product', function ($join) {
+            //             $join->on('product.store_id', '=', 'store.id')
+            //                 ->where('product.rn', '<=', 3)
+            //                 ->orWhere(function($query) {
+            //                     $query->whereNull('product.id');
+            //                 });
+            //             })
+            //         ->whereIn('store.id', $ids)
+            //         ->orderByRaw('FIELD('.$orderField.')')
+            //         ->with(['province', 'city'])->get();
     }
 }

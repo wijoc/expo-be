@@ -296,7 +296,7 @@ class StoreController extends Controller
     {
         if ($domain) {
             $store = $this->storeModel->findStore($domain)[0];
-            if ($request->with_product && $request->with_product !== 'false') {
+            if ($request->with_product && $request->with_product === 'true') {
                 $store['products'] = ProductResource::collection($this->productModel->getProducts(['store'], $store->store_id));
             }
 
@@ -457,6 +457,52 @@ class StoreController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Please provide an ID!'
+            ], 400);
+        }
+    }
+
+    /** Get multiple store */
+    public function showStores (Request $request) {
+        if ($request->ids && is_array($request->ids)) {
+            if($request->with_product && $request->with_product === 'true'){
+                $storesData = $this->storeModel->findStores($request->ids);
+                $data = [];
+                foreach ($storesData as $key => $value) {
+                    if (!array_key_exists($value['store_id'], $data)) {
+                        $data[$value['store_id']] = $value;
+                        $data[$value['store_id']]['products'] = [];
+                    }
+
+                    if ($value['product_id'] && $value['product_id'] !== '') {
+                        $prd = array(
+                            'id' => $value['product_id'],
+                            'uuid' => $value['product_uuid'],
+                            'name' => $value['product_name'],
+                            'price' => $value['net_price'],
+                            'store_id' => $value['store_id']
+                        );
+                        $prods = $data[$value['store_id']]['products'];
+                        array_push($prods, $prd);
+
+                        $data[$value['store_id']]['products'] = $prods ?? [];
+                    }
+                }
+
+                $storesData = array_values($data);
+            } else {
+                $storesData = $this->storeModel->findMultiStore($request->ids);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data Found',
+                'count_data' => count($storesData),
+                'data' => StoreResource::collection($storesData)
+            ], 200);
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please provide parameter "ids" (must be an array)!'
             ], 400);
         }
     }

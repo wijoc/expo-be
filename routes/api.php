@@ -45,6 +45,7 @@ use GuzzleHttp\Middleware;
 
     // Product Routes
     Route::get('/products', [ProductController::class, 'index']);
+    Route::get('/products/multiple', [ProductController::class, 'showProducts']);
     Route::get('/products/{product}', [ProductController::class, 'show']);
     Route::get('/products/similar/{product}', [ProductController::class, 'similar']);
 

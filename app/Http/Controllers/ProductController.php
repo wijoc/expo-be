@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\DB;
 class ProductController extends Controller
 {
     protected $productModel;
-    protected $productLogModel;
     protected $keywordLogModel;
     protected $rules;
     protected $messages;
@@ -66,13 +65,31 @@ class ProductController extends Controller
             'city' => $request->city ?? null,
             'province' => $request->province ?? null,
             'page' => $request->sort !== 'relevant' ? $request->page : 'all',
-            'limit' => $request->sort !== 'relevant' && $request->per_page && $request->per_page > 0 ? $request->per_page : 100000
+            'limit' => $request->sort !== 'relevant' && $request->per_page && $request->per_page > 0 ? $request->per_page : 200,
+            'except' => $request->sort !== 'relevant' && $request->except ? $request->except : null
         ];
+
+        // Set Offset
+        if ($request->sort !== 'relevant') {
+            if ($request->page > 1) {
+                $filters['offset'] = (intval($request->page) - 1) * $filters['limit'];
+            } else {
+                $filters['offset'] = 0;
+            }
+        }
 
         // Set Sorting
         switch ($request->sort) {
             case "relevant":
                 $filters['sort'] = false;
+                break;
+            case "id":
+                $filters['sort'] = 'id';
+                $filters['order'] = $request->order ?? 'ASC';
+                break;
+            case "uuid":
+                $filters['sort'] = 'product_uuid';
+                $filters['order'] = $request->order ?? 'ASC';
                 break;
             // case "popularity":
             //     $filters['order'] = $request->order ?? 'ASC';
@@ -531,5 +548,25 @@ class ProductController extends Controller
             'success' => true,
             'message' => $id
         ], 200);
+    }
+
+    /** Get multiple product */
+    public function showProducts (Request $request) {
+        if ($request->ids && is_array($request->ids)) {
+            // dd($request->ids);
+            $products = $this->productModel->findProducts($request->ids, 'id');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data Found',
+                'count_data' => count($products),
+                'data' => $products ? ProductResource::collection($products) : null
+            ], 200);
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please provide parameter "ids" (must be an array)!'
+            ], 400);
+        }
     }
 }

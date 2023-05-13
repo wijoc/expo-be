@@ -265,7 +265,7 @@ class Product extends Model
 
     }
 
-    public function similarProduct (Array $keywords, Array $categories) {
+    public function similarProduct (Array $keywords, Array $categories, $filters) {
         $category = DB::table('product_category')
                         ->select('c.*', 'p.name as parent_name')
                         ->from('product_category as c')
@@ -307,6 +307,8 @@ class Product extends Model
                     ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
                     ->multisearch($keywords)
                     ->whereIn('product.category_id', $categories)
+                    ->sorting($filters)
+                    ->limitation($filters)
                     ->get();
     }
 

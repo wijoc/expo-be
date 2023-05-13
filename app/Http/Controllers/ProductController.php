@@ -518,8 +518,60 @@ class ProductController extends Controller
             $product = $this->productModel->findProduct($id)->first();
 
             if ($product) {
+                $filters = [
+                    'page' => $request->sort !== 'relevant' ? $request->page : 'all',
+                    'limit' => $request->sort !== 'relevant' && $request->per_page && $request->per_page > 0 ? $request->per_page : 200
+                ];
+
+                // Set Offset
+                if ($request->sort !== 'relevant') {
+                    if ($request->page > 1) {
+                        $filters['offset'] = (intval($request->page) - 1) * $filters['limit'];
+                    } else {
+                        $filters['offset'] = 0;
+                    }
+                }
+
+                // Set Sorting
+                switch ($request->sort) {
+                    case "relevant":
+                        $filters['sort'] = false;
+                        break;
+                    case "id":
+                        $filters['sort'] = 'id';
+                        $filters['order'] = $request->order ?? 'ASC';
+                        break;
+                    case "uuid":
+                        $filters['sort'] = 'product_uuid';
+                        $filters['order'] = $request->order ?? 'ASC';
+                        break;
+                    // case "popularity":
+                    //     $filters['order'] = $request->order ?? 'ASC';
+                    //     $filters['sort'] = 'popularity_poin';
+                    //     break;
+                    case "price":
+                        $filters['sort'] = 'net_price';
+                        $filters['order'] = $request->order ?? 'ASC';
+                        break;
+                    case "name":
+                        $filters['order'] = $request->order ?? 'ASC';
+                        $filters['sort'] = 'store_name';
+                        break;
+                    case "newest":
+                    case "latest":
+                        $filters['order'] = 'ASC';
+                        $filters['sort'] = 'created_at';
+                        break;
+                    case "oldest":
+                        $filters['order'] = 'DESC';
+                        $filters['sort'] = 'created_at';
+                        break;
+                    default:
+                        $filters['order'] = $request->order ?? 'ASC';
+                        $filters['sort'] = false;
+                }
                 $arrName = preg_split('/\s+/', preg_replace('/[\-!@^-_=|;\\\\&\/#,\s\s+()$~%.\'":*?<>{}\[\]]/', ' ', $product->product_name), -1);
-                $similar = $this->productModel->similarProduct($arrName, [0 => $product->category_id]);
+                $similar = $this->productModel->similarProduct($arrName, [0 => $product->category_id], $filters);
 
                 return response()->json([
                     'success' => true,

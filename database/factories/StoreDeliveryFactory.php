@@ -14,7 +14,8 @@ class StoreDeliveryFactory extends Factory
     public function definition()
     {
         return [
-            'store_id' => $this->faker->numberBetween(1, 20),
+            'store_id' => $this->faker->numberBetween(2, 200),
+            // 'store_id' => '1',
             'delivery_courier_id' => $this->faker->numberBetween(1, 3)
         ];
     }

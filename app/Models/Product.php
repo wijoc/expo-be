@@ -12,7 +12,7 @@ class Product extends Model
 
     protected $table = 'product';
     protected $primaryKey = 'id';
-    protected $fillable = ['product_uuid', 'name', 'condition', 'initial_price', 'net_price', 'disc_percent', 'disc_price', 'weight_g', 'min_purchase', 'store_id', 'category_id', 'created_tz', 'created_at', 'updated_tz', 'updated_at'];
+    protected $fillable = ['product_uuid', 'name', 'condition', 'initial_price', 'net_price', 'disc_percent', 'disc_price', 'weight_g', 'min_purchase', 'store_id', 'category_id', 'description', 'stock_status', 'stock_available_days', 'stock_available_date', 'created_tz', 'created_at', 'updated_tz', 'updated_at'];
 
     public function store () {
         return $this->belongsTo('App\Models\Store', 'store_id', 'id');
@@ -209,6 +209,10 @@ class Product extends Model
                         'disc_price',
                         'weight_g',
                         'min_purchase',
+                        'product.description',
+                        'stock_status',
+                        'stock_available_days',
+                        'stock_available_date',
                         'store_id',
                         'product.category_id',
                         'product.created_at',
@@ -234,7 +238,7 @@ class Product extends Model
                     ->crossJoin(DB::raw('(SELECT current_setting(\'TIMEZONE\')) as tz'))
 
                     /** Use this for PostgreSQL */
-                    ->whereRaw('CAST(product.id AS CHAR) = ?', [$id])
+                    ->whereRaw('CAST(product.id AS TEXT) = ?', [$id])
                     ->orWhereRaw('CAST(product.product_uuid AS TEXT) = ?', [$id])
 
                     /** Use this for MySQL */

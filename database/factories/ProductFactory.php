@@ -25,7 +25,11 @@ class ProductFactory extends Factory
             'weight_g' => $this->faker->numberBetween(1, 2000),
             'min_purchase' => $this->faker->numberBetween(1, 10),
             'store_id' => $this->faker->numberBetween(1, 200),
-            'category_id' => $this->faker->numberBetween(1, 3)
+            'category_id' => $this->faker->numberBetween(1, 3),
+            'description' => 'Lorem ipsum dolor sit amet consectetur adipisicing elit. Fugit, tempora?',
+            'stock_status' => 'R',
+            // 'stock_available_date' => $this->faker->iso8601('c'),
+            // 'stock_available_days' => $this->faker->numberBetween(1, 90)
         ];
     }
 }

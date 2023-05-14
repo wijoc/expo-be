@@ -13,6 +13,7 @@ use App\Models\ProductImage;
 use App\Models\ProductCategory;
 use App\Http\Resources\ProductResource;
 use Illuminate\Support\Facades\DB;
+use TimeHelp;
 
 class ProductController extends Controller
 {
@@ -33,6 +34,11 @@ class ProductController extends Controller
             'weight_in_gram' => 'required|numeric',
             'min_purchase' => 'required|numeric',
             'category_id' => 'required',
+            'description' => 'string|nullable|max:200',
+            'status_stock' => ['required', Rule::in(["PO","R"])],
+            'available_date' => 'required_if:stock_status,PO|required_without:available_days|date_format:Y-m-d',
+            'available_days' => 'required_if:stock_status,PO|required_without:available_date|numeric',
+            'available_timezone' => 'required_unless:available_date,null'
         ];
         $this->messages = [
             'name.required' => 'Product name is required',
@@ -51,6 +57,17 @@ class ProductController extends Controller
             'min_purchase.required' => 'Min Purchase is required',
             'min_purchase.numeric' => 'Value must be numeric',
             'category_id' => 'Category ID is required',
+            'description.string' => 'Description must be a string',
+            'description.string' => 'Description cannot be more than 200 character',
+            'status_stock.required' => 'Stock status is required',
+            'status_stock.in' => 'Value must be "PO" for Pre-Order or "R" for In-stock',
+            'available_date.required_if' => "One of stock available date or stock available days is required",
+            'available_date.required_without' => "One of stock available date or stock available days is required",
+            'available_date.date_format' => "Stock available date must following this format: Y-m-d",
+            'available_days.required_if' => "One of stock available date or stock available days is required",
+            'available_days.required_without' => "One of stock available date or stock available days is required",
+            'available_days.numeric' => "Stock available days must be numeric",
+            'available_timezone.required_unless' => 'Timezone is required when available_date not null'
         ];
     }
 
@@ -166,7 +183,6 @@ class ProductController extends Controller
         $this->messages['images.max'] = 'File size can not be greater than 2MB (2048 KB)';
 
         $validator = Validator::make($request->all(), $this->rules, $this->messages);
-
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
@@ -178,15 +194,19 @@ class ProductController extends Controller
             if ($store) {
                 $inputData = [
                     'product_uuid' => Str::uuid(),
-                    'name' => $request->name,
-                    'condition' => $request->condition,
-                    'initial_price' => $request->initial_price,
-                    'disc_percent' => $request->discount_percent,
-                    'disc_price' => $request->discount_price,
-                    'weight_g' => $request->weight_in_gram,
-                    'min_purchase' => $request->min_purchase,
-                    'store_id' => $request->store_id,
-                    'category_id' => $request->category_id,
+                    'name' => $validator->validated()['name'],
+                    'condition' => $validator->validated()['condition'],
+                    'initial_price' => $validator->validated()['initial_price'],
+                    'disc_percent' => $validator->validated()['discount_percent'],
+                    'disc_price' => $validator->validated()['discount_price'],
+                    'weight_g' => $validator->validated()['weight_in_gram'],
+                    'min_purchase' => $validator->validated()['min_purchase'],
+                    'store_id' => $validator->validated()['store_id'],
+                    'category_id' => $validator->validated()['category_id'],
+                    'description' => htmlspecialchars($validator->validated()['description']),
+                    'stock_status' => $validator->validated()['status_stock'],
+                    'stock_available_days' => $validator->validated()['status_stock'] === 'PO' && isset($validator->validated()['available_days']) ? $validator->validated()['available_days'] : null,
+                    'stock_available_date' => $validator->validated()['status_stock'] === 'PO' && isset($validator->validated()['available_date']) && !isset($validator->validated()['available_days']) ? TimeHelp::convertTz($validator->validated()['available_date'], $validator->validated()['available_timezone'], 'UTC') : null,
                     'created_at' => now(),
                     'created_tz' => date_default_timezone_get(),
                     'updated_at' => now(),

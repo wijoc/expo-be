@@ -52,6 +52,7 @@ class CreateExhibitionsTable extends Migration
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
 
             $table->foreignId('user_id')->constrained('tb_user')->onUpdate('cascade')->onDelete('cascade');
+            $table->unique('user_id');
             $table->foreignId('district_id')->constrained('ref_district')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('city_id')->constrained('ref_city')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('province_id')->constrained('ref_province')->onUpdate('cascade')->onDelete('cascade');
@@ -93,6 +94,10 @@ class CreateExhibitionsTable extends Migration
             $table->decimal('disc_price', $precision = 13, $scale = 2)->nullable();
             $table->integer('weight_g');
             $table->integer('min_purchase');
+            $table->text('description')->nullable();
+            $table->string('stock_status');
+            $table->timestamp('stock_available_date')->nullable();
+            $table->string('stock_available_days')->nullable();
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');

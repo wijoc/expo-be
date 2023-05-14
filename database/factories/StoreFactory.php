@@ -22,7 +22,7 @@ class StoreFactory extends Factory
             'description' => 'Lorem ipsum dolor sit amet consectetur adipisicing elit. Dolorem, cupiditate?',
             'full_address' => $this->faker->address(),
             'category_id' => $this->faker->numberBetween(1, 14),
-            'user_id' => $this->faker->numberBetween(3, 7),
+            'user_id' => $this->faker->unique()->numberBetween(4, 203),
             // 'user_id' => '1',
             'province_id' => $this->faker->numberBetween(1, 33),
             'city_id' => $this->faker->numberBetween(1, 500),

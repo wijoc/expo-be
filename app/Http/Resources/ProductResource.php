@@ -44,6 +44,22 @@ class ProductResource extends JsonResource
             'images' => ImageResource::collection($this->image)
         ];
 
+        if ($this->description) {
+            $array['description'] = $this->description;
+        }
+
+        if ($this->stock_status) {
+            $array['stock_status'] = $this->stock_status === 'PO' ? 'Preorder' : 'In-stock';
+        }
+
+        if ($this->stock_available_days) {
+            $array['available_days'] = $this->stock_status === 'PO' && $this->stock_available_days ? $this->stock_available_days : null;
+        }
+
+        if ($this->stock_available_date) {
+            $array['available_date'] = $this->stock_status === 'PO' && $this->stock_available_date ? Carbon::parse($this->stock_available_date)->format('c') : null;
+        }
+
         if ($this->created_tz !== 'SYSTEM') {
             $array['created_at'] = Carbon::parse($this->created_at)->format('c');
         } else {

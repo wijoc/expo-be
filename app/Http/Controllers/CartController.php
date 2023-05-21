@@ -111,6 +111,7 @@ class CartController extends Controller
                 if($checkCartItem) {
                     $updateData = [
                         'product_qty' => intval($checkCartItem->product_qty) + intval($validator->validated()['qty']),
+                        'note' => $validator->validated()['note'],
                         'updated_at' => now(),
                         'updated_tz' => date_default_timezone_get()
                     ];
@@ -169,13 +170,17 @@ class CartController extends Controller
                         // 'product_uuid' => 'required|exists:App\Models\Product,product_uuid',
 
                         'product_uuid' => 'required',
-                        'qty' => 'required|numeric'
+                        'qty' => 'required|numeric',
+                        'note' => 'string|nullable|max:200'
                     ], [
                         'product_uuid.required' => 'Product UUID is required.',
                         // 'product_uuid.exist' => 'Product with requested UUID not found.',
 
                         'qty.required' => 'Product Quantity is required.',
-                        'qty.numeric' => 'Product Quantity must be numeric.'
+                        'qty.numeric' => 'Product Quantity must be numeric.',
+
+                        'note.string' => 'Value must be string.',
+                        'note.max' => 'Value must be string and cannot be more than 200 character.'
                 ]);
 
                 if ($validator->fails()) {
@@ -191,6 +196,7 @@ class CartController extends Controller
                             if ($validator->validated()['qty'] > 0) {
                                 $updateData = [
                                     'product_qty' => $validator->validated()['qty'],
+                                    'note' => $validator->validated()['note'],
                                     'updated_at' => now(),
                                     'updated_tz' => date_default_timezone_get()
                                 ];

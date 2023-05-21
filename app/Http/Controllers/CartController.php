@@ -43,7 +43,8 @@ class CartController extends Controller
 
                 array_push($items, [
                     'cart_id' => $value->id,
-                    'product' => $value->name,
+                    'product_name' => $value->name,
+                    'product_id' => $value->product_id,
                     'product_uuid' => $value->product_uuid,
                     'product_initial_price' => floatval($value->initial_price),
                     'product_net_price' => floatval($value->net_price),
@@ -51,6 +52,7 @@ class CartController extends Controller
                     'product_discount_price' => $value->disc_price,
                     'quantity' => floatval($value->product_qty),
                     'weight_in_gram' => $value->weight_g,
+                    'note' => $value->note,
                     'store' => $value->store_name,
                     'store_domain' => $value->domain
                 ]);
@@ -66,9 +68,9 @@ class CartController extends Controller
             'message' => $cart ? 'Data found' : 'Cart is empty',
             'count_data' => count($cart),
             'data' => [
-                // 'items' => $cart ? CartResource::collection($cart) : null,
-                'items' => $cart ? collect(array_values($data)) : null,
-                'total_price' => $totalCart
+                // 'cart' => $cart ? CartResource::collection($cart) : null,
+                'cart' => $cart ? collect(array_values($data)) : null,
+                'total_cart' => $totalCart
             ]
         ], 200);
     }
@@ -82,14 +84,18 @@ class CartController extends Controller
                 // 'product_uuid' => 'required|exists:App\Models\Product,product_uuid',
 
                 'product_uuid' => 'required',
-                'qty' => 'required|numeric|min:1'
+                'qty' => 'required|numeric|min:1',
+                'note' => 'string|nullable|max:200'
             ], [
                 'product_uuid.required' => 'Product UUID is required.',
                 'product_uuid.exist' => 'Product with requested UUID not found.',
 
                 'qty.required' => 'Product Quantity is required.',
                 'qty.numeric' => 'Product Quantity must be numeric.',
-                'qty.min' => 'Product Quantity must more than 0.'
+                'qty.min' => 'Product Quantity must more than 0.',
+
+                'note.string' => 'Value must be string.',
+                'note.max' => 'Value must be string and cannot be more than 200 character.'
             ]);
 
         if ($validator->fails()) {
@@ -115,6 +121,7 @@ class CartController extends Controller
                         'product_uuid' => $validator->validated()['product_uuid'],
                         'product_qty' => $checkCartItem ? (intval($checkCartItem->product_qty) + intval($validator->validated()['qty'])) : intval($validator->validated()['qty']),
                         'store_id' => $product->store_id,
+                        'note' => $validator->validated()['note'],
                         'user_id' => auth()->guard('api')->user()->id,
                         'created_at' => now(),
                         'created_tz' => date_default_timezone_get(),
@@ -165,7 +172,7 @@ class CartController extends Controller
                         'qty' => 'required|numeric'
                     ], [
                         'product_uuid.required' => 'Product UUID is required.',
-                        'product_uuid.exist' => 'Product with requested UUID not found.',
+                        // 'product_uuid.exist' => 'Product with requested UUID not found.',
 
                         'qty.required' => 'Product Quantity is required.',
                         'qty.numeric' => 'Product Quantity must be numeric.'

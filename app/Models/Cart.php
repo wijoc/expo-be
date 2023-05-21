@@ -28,6 +28,8 @@ class Cart extends Model
     public function getCart (Int $user, Array $filter = []) {
         return Cart::selectRaw('cart.id,
                                 cart.*,
+                                product.id as product_id,
+                                product.product_uuid,
                                 product.name,
                                 product.initial_price,
                                 product.net_price,
@@ -39,12 +41,15 @@ class Cart extends Model
                     ->leftJoin('product', 'product.product_uuid', '=', 'cart.product_uuid')
                     ->leftJoin('store', 'store.id', '=', 'cart.store_id')
                     ->where('cart.user_id', $user)
+                    ->orderBy('cart.created_at', 'desc')
                     ->get();
     }
 
     public function selectCarts (Int $user, Array $whereIn) {
         return Cart::selectRaw('cart.id,
                                 cart.*,
+                                product.id as product_id,
+                                product.product_uuid,
                                 product.name,
                                 product.initial_price,
                                 product.net_price,
@@ -57,6 +62,7 @@ class Cart extends Model
                     ->leftJoin('store', 'store.id', '=', 'cart.store_id')
                     ->where('cart.user_id', $user)
                     ->whereIn('cart.id', $whereIn)
+                    ->orderBy('cart.created_at', 'desc')
                     ->get();
     }
 

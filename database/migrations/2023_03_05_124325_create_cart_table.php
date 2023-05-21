@@ -17,6 +17,7 @@ class CreateCartTable extends Migration
             $table->id();
             $table->uuid('product_uuid');
             $table->integer('product_qty');
+            $table->text('note')->nullable();
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();
             $table->string('updated_tz')->default('SYSTEM');

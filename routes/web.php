@@ -23,49 +23,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-/** Store Route */
-Route::group(['prefix' => 'api', 'controller' => StoreController::class], function () {
-    Route::post('/stores', 'store');
-    Route::get('/stores', 'index');
-    Route::get('/stores/{slug}', 'show');
-    Route::put('/stores/{id}', 'update');
-    Route::delete('/stores/{id}', 'destroy');
-});
 
-/** User Route */
-Route::group(['prefix' => 'api', 'controller' => UserController::class], function () {
-    Route::get('/users', 'index');
-    Route::post('/users', 'store');
-    Route::post('/user-register', 'userRegister');
-    Route::post('/login', 'login');
-});
-
-/** Product Route */
-Route::group(
-    [
-        'middleware' => 'jauth',
-        'prefix' => 'api',
-        'controller' => ProductController::class
-    ], function () {
-    Route::post('/products', 'store');
-    Route::get('/products', 'index');
-    Route::get('/products/{slug}', 'show');
-    Route::put('/products/{id}', 'update');
-    Route::delete('/products/{id}', 'destroy');
-});
-
-/** Category Route */
-Route::group(['prefix' => 'api', 'controller' => ProductCategoryController::class], function () {
-    Route::post('/categories/product', 'store');
-    Route::get('/categories/product', 'index');
-    Route::get('/categories/product/{id}', 'show');
-    Route::put('/categories/product/{id}', 'update');
-    Route::delete('/categories/product/{id}', 'destroy');
-});
-Route::group(['prefix' => 'api', 'controller' => StoreCategoryController::class], function () {
-    Route::post('/categories/store', 'store');
-    Route::get('/categories/store', 'index');
-    Route::get('/categories/store/{id}', 'show');
-    Route::put('/categories/store/{id}', 'update');
-    Route::delete('/categories/store/{id}', 'destroy');
+Route::get('/test', function () {
+    return view('mails.otp_registration');
 });

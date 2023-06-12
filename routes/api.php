@@ -34,8 +34,9 @@ use GuzzleHttp\Middleware;
   Route::group(['prefix' => 'beta'], function () {
     // User Routes
     Route::post('/login', [UserController::class, 'login']);
-    Route::get('/user-register', [UserController::class, 'userRegister']);
     Route::get('/refresh-token', [UserController::class, 'refreshToken']);
+    Route::post('/registration', [UserController::class, 'registration']);
+    Route::get('/user-register', [UserController::class, 'userRegister']);
 
     // Store Routes
     Route::get('/stores', [StoreController::class, 'index']);

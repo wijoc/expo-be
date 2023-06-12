@@ -13,6 +13,20 @@ class CreateUsersTable extends Migration
      */
     public function up()
     {
+        Schema::create('tb_registration', function (Blueprint $table) {
+            $table->id();
+            $table->string('email', 225)->unique()->nullable();
+            $table->string('phone', 225)->unique()->nullable();
+            $table->string('otp', 225);
+            $table->string('otp_valid_tz')->default('SYSTEM');
+            $table->timestamp('otp_valid_until')->useCurrent();
+            $table->string('verified', 1)->default('F');
+            $table->string('created_tz')->default('SYSTEM');
+            $table->timestamp('created_at')->useCurrent();
+            $table->string('updated_tz')->default('SYSTEM');
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
+        });
+
         Schema::create('tb_user', function (Blueprint $table) {
             $table->id();
             $table->string('name', 50);

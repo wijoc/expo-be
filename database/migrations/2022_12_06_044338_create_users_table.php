@@ -17,9 +17,9 @@ class CreateUsersTable extends Migration
             $table->id();
             $table->string('email', 225)->unique()->nullable();
             $table->string('phone', 225)->unique()->nullable();
-            $table->string('otp', 225);
-            $table->string('otp_valid_tz')->default('SYSTEM');
-            $table->timestamp('otp_valid_until')->useCurrent();
+            $table->string('otp', 225)->nullable();
+            $table->string('otp_valid_tz')->default('SYSTEM')->nullable();
+            $table->timestamp('otp_valid_until')->useCurrent()->nullable();
             $table->string('verified', 1)->default('F');
             $table->string('created_tz')->default('SYSTEM');
             $table->timestamp('created_at')->useCurrent();

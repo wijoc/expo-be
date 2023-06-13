@@ -173,9 +173,8 @@ class UserController extends Controller
                 'errors' => $validator->errors()
             ], 400);
         } else {
-            // $uncompletedRegister = $this->registrationModel->findRegistration(['email' => $validator->validated()['email'] ?? null, 'phone' => $validator->validated()['phone'] ?? null])->first();
             $otp = self::createOTP(6);
-            $data = [
+            $validated = [
                 'email' => $validator->validated()['email'] ?? null,
                 'phone' => $validator->validated()['phone'] ?? null,
                 'otp' => Hash::make($otp),
@@ -187,14 +186,14 @@ class UserController extends Controller
                 'updated_tz' => date_default_timezone_get()
             ];
 
-            $upsert = $this->registrationModel->inputRegistration($data);
+            $upsert = $this->registrationModel->inputRegistration($validated);
             if ($upsert) {
-                Mail::to('fake@mail.com')->send(new AuthMail(['otp' => $otp, 'valid_until' => $data['valid_until'], 'valid_tz' => $data['valid_tz']]));
+                Mail::to('fake@mail.com')->send(new AuthMail(['otp' => $otp, 'valid_until' => $validated['valid_until'], 'valid_tz' => $validated['valid_tz']]));
 
                 return response()->json([
                     'success' => true,
                     'message' => 'Registration success. OTP is send to email / phone.',
-                    'otp_valid' => Carbon::parse($data['valid_until'])->format('c')
+                    'otp_valid' => Carbon::parse($validated['valid_until'])->format('c')
                 ], 200);
             } else {
                 return response()->json([
@@ -205,31 +204,99 @@ class UserController extends Controller
         }
     }
 
-    public function userRegister (Request $request) {
+    public function registrationVerification (Request $request) {
         $validator = Validator::make($request->all(), [
-                'name' => 'required|min:1|max:50',
-                'email' => 'required|nullable|email:dns|unique:App\Models\User',
-                // 'phone' => ['required_without:email', 'nullable', 'regex:/^(0[1-9]{1}|(\+[1-9]{1}))[0-9]{3,13}$/', 'min:8', 'unique:App\Models\User'],
-                'password' => 'required|confirmed|min:8',
-                'image' => 'image|file|max:2048',
+                'email' => 'required_without:phone|nullable|email:dns|exists:App\Models\Registration',
+                'phone' => ['required_without:email', 'nullable', 'regex:/^(0[1-9]{1}|(\+[1-9]{1}))[0-9]{3,13}$/', 'min:8', 'exists:App\Models\Registration'],
+                'otp' => 'required'
             ],
             [
-                'name.required' => 'Name is required',
-                'name.min' => 'Name must be at least 1 characters',
-                'name.max' => 'Name cannot be more than 50 characters',
-                'email.required' => 'Email is required',
+                'email.required_without' => 'Email / Phone number is required',
                 'email.email' => 'Email is invalid',
+                'email.exists' => 'Email is not registered',
+                // 'phone.required_without' => 'Email or Mobilephone Number must be filled',
+                // 'phone.min' => 'Mobilephone Number must ber at least 8 character (including country prefix)',
+                // 'phone.regex' => 'Mobilephone Number is invalid. Allowed characted : + and 0-9; without space, "-", or "\"; Starting with "00" is not allowed use +(prefix) instead',
+                // 'phone.exists' => 'Mobilephone Number is not registered',
+                'otp.required' => 'OTP is required.'
+            ]
+        );
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'error' => true,
+                'message' => 'The given data was invalid',
+                'errors' => $validator->errors()
+            ], 400);
+        } else {
+            $checkRegistration = $this->registrationModel->findRegistration(['id', 'otp', 'otp_valid_tz', 'otp_valid_until', 'tz'], ['email' => $validator->validated()['email'] ?? null, 'phone' => $validator->validated()['phone'] ?? null])->first();
+
+            $now = Carbon::now('UTC');
+            if ($checkRegistration['otp_valid_tz'] === 'UTC') {
+                $validLimit = Carbon::parse($checkRegistration['otp_valid_until'])->timezone('UTC');
+            } else if ($checkRegistration['otp_valid_tz'] === 'SYSTEM') {
+                $limit = Carbon::createFromFormat('c', $checkRegistration['otp_valid_until'], $checkRegistration['tz']);
+                $validLimit = Carbon::parse($limit)->setTimezone('UTC');
+            } else {
+                $limit = Carbon::createFromFormat('c', $checkRegistration['otp_valid_until'], $checkRegistration['otp_valid_tz']);
+                $validLimit = Carbon::parse($limit)->setTimezone('UTC');
+            }
+
+            if ($now <= $validLimit) {
+                if (Hash::check($validator->validated()['otp'], $checkRegistration['otp'])) {
+                    $verify = $this->registrationModel->verifyOTP($checkRegistration['id']);
+                    if ($verify) {
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'OTP verified, Please continue the registration.'
+                        ], 202);
+                    } else {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'System Error: failed to verify OTP.'
+                        ], 500);
+                    }
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'The OTP code is invalid.',
+                        'req' => $validator->validated()['otp'],
+                        'otp' => $checkRegistration['otp']
+                    ], 400);
+                }
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The OTP code is expired.'
+                ], 410);
+            }
+        }
+    }
+
+    public function registrationCompletion (Request $request) {
+        $validator = Validator::make($request->all(), [
+                'name' => 'required|min:1|max:50',
+                'email' => 'required_without:phone|nullable|email:dns|unique:App\Models\User|exists:App\Models\Registration',
+                'phone' => ['required_without:email', 'nullable', 'regex:/^(0[1-9]{1}|(\+[1-9]{1}))[0-9]{3,13}$/', 'min:8', 'exists:App\Models\Registration'],
+                'password' => 'required|confirmed|min:8',
+            ],
+            [
+                'email.required_without' => 'Email / Phone number is required',
+                'email.email' => 'Email is invalid',
+                'email.exists' => 'Email is not registered',
                 'email.unique' => 'Email is already registered',
 
                 // 'phone.required_without' => 'Email or Mobilephone Number must be filled',
                 // 'phone.min' => 'Mobilephone Number must ber at least 8 character (including country prefix)',
                 // 'phone.regex' => 'Mobilephone Number is invalid. Allowed characted : + and 0-9; without space, "-", or "\"; Starting with "00" is not allowed use +(prefix) instead',
-                // 'phone.unique' => 'Mobilephone Number is already registered',
+                // 'phone.exists' => 'Mobilephone Number is not registered',
 
+                'name.required' => 'Name is required',
+                'name.min' => 'Name must be at least 1 characters',
+                'name.max' => 'Name cannot be more than 50 characters',
                 'password.required' => 'Password is required',
                 'password.min' => 'Password must be at least 8 character',
-                'image.image' => 'File must be an image (jpg, jpeg, png, bmp, gif, svg, or webp)',
-                'image.max' => 'File size can not be greater than 2MB (2048 KB)',
             ]
         );
 
@@ -240,31 +307,34 @@ class UserController extends Controller
                 'errors' => $validator->errors()
             ], 400);
         } else {
-            $validated = [
-                'email' => $validator->validated()['email'],
-                // 'email_prefix' => ,
-                // 'phone' => $validator->validated()['phone'],
-                // 'phone_prefix' => ,
-                'password' => Hash::make($validator->validated()['password']),
-                'image_path' => $request->file('image')->store('user-profiles'),
-                'image_mime' => $request->file('image')->getMimeType(),
-                'role' => 'user'
-            ];
+            $checkRegistration = $this->registrationModel->findRegistration(['id', 'verified'], ['email' => $validator->validated()['email'] ?? null, 'phone' => $validator->validated()['phone'] ?? null])->first();
+            if ($checkRegistration['verified'] === 'T') {
+                $validated = [
+                    'name' => $validator->validated()['name'],
+                    'email' => $validator->validated()['email'] ?? null,
+                    'phone' => $validator->validated()['phone'] ?? null,
+                    'password' => Hash::make($validator->validated()['password']),
+                    'role' => 'user'
+                ];
 
-            $inputUser = User::insert($validated);
-
-            if ($inputUser) {
-                return response()->json([
-                    'success' => true,
-                    'errors' => false,
-                    'message' => 'Success add new data'
-                ], 200);
+                $inputUser = User::insert($validated);
+                if ($inputUser) {
+                    $this->registrationModel->deleteRegistration($checkRegistration['id']);
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Success add new data'
+                    ], 200);
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Failed add new data'
+                    ], 500);
+                }
             } else {
                 return response()->json([
                     'success' => false,
-                    'errors' => false,
-                    'message' => 'Failed add new data'
-                ], 500);
+                    'message' => 'Please verify email / phone number first.'
+                ], 400);
             }
         }
     }

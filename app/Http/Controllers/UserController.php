@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Cookie;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Illuminate\Support\Facades\Mail;
@@ -360,7 +361,12 @@ class UserController extends Controller
                 'errors' => $validator->errors()
             ], 400);
         } else {
-            $credentials = $request->only(['email', 'password']);
+            if ($validator->validated()['email']) {
+                $credentials['email'] = $validator->validated()['email'];
+            } else {
+                $credentials['phone'] = $validator->validated()['phone'];
+            }
+            $credentials['password'] = $validator->validated()['password'];
 
             if (! $jwtoken = auth()->guard('api')->claims(['type' => 'access_token'])->setTTL(31536000)->attempt($credentials)) {
                 return response()->json([
@@ -371,38 +377,56 @@ class UserController extends Controller
                         'credentials' => "Email / Password is incorect"
                     ]
                 ], 400);
+            } else {
+                $refreshToken = auth()->guard('api')->claims(['type' => 'refresh_token'])->setTTL(36000)->attempt($credentials);
+                return response()->json([
+                    'success' => true,
+                    'error' => false,
+                    'message' => 'Login success',
+                    'access_token' => $jwtoken,
+                    'refresh_token' => $refreshToken
+                ], 200)->withCookie(cookie('x-refresh-token', $refreshToken, 36000, null, null, false, true));
             }
-
-            return response()->json([
-                'success' => true,
-                'error' => false,
-                'message' => 'Login success',
-                'access_token' => $jwtoken,
-                'refresh_token' => auth()->guard('api')->claims(['type' => 'refresh_token'])->setTTL(36000)->attempt($credentials)
-            ], 200);
         }
     }
 
-    public function refreshToken () {
-        try {
-            $payload = auth()->guard('api')->payload();
+    public function refreshToken (Request $request) {
+        // GET Token from cookie
+        $token = $request->cookie('x-refresh-token');
 
+        /** Overwrite the request header,
+         * Have to use this since parseToken() and getPayload() keep parsing bearer token or the cached token
+         * instead the given argument $token
+         * I think because the library only read from Header Authorization
+         * */
+        $request->headers->set('Authorization', 'Bearer ' . $token);
+
+        try {
+            $payload = JWTAuth::setToken($token)->getPayload();
             if ($payload->get('type') === 'refresh_token') {
-                // auth()->invalidate(); // Invalidate refresh token
+                // Get User
+                $loggedInUser = auth()->guard('api')->userOrFail();
+
+                // Generate new tokens
+                $newAccessToken = JWTAuth::refresh(JWTAuth::claims(['type' => 'access_token', 'exp' => Carbon::now()->addMinutes(15)])->getToken());
+                $newRefreshToken = JWTAuth::claims(['type' => 'refresh_token', 'exp' => Carbon::now()->addHours(10)])->fromUser($loggedInUser);
+
+                // Invalidate previous refresh_token
+                JWTAuth::setToken($token)->invalidate();
 
                 return response()->json([
-                    'success' => false,
-                    'error' => true,
-                    'message' => 'The given data was invalid',
-                    'access_token' => auth()->guard('api')->claims(['type' => 'access_token'])->refresh(),
-                    'refresh_token' => auth()->guard('api')->claims(['type' => 'refresh_token'])->setTTL(36000)->refresh()
-                ], 200);
+                    'success' => true,
+                    'error' => false,
+                    'message' => 'Login success',
+                    'access_token' => $newAccessToken,
+                    'refresh_token' => $newRefreshToken,
+                ], 200)->withCookie(cookie('x-refresh-token', $newRefreshToken, 36000, null, null, false, true));
             } else {
                 return response()->json([
                     'success' => false,
                     'message' => 'Refresh Token is Invalid'
                 ], 401);
-            }
+              }
         }
         catch (JWTException $error) {
             if ($error instanceof \Tymon\JWTAuth\Exceptions\TokenInvalidException){

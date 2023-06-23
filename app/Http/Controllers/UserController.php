@@ -390,6 +390,16 @@ class UserController extends Controller
         }
     }
 
+    public function logout () {
+        Cookie::queue(Cookie::forget('x-refresh-token'));
+        JWTAuth::invalidate(JWTAuth::getToken());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Logout'
+        ], 200);
+    }
+
     public function refreshToken (Request $request) {
         // GET Token from cookie
         $token = $request->cookie('x-refresh-token');
